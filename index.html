@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empires — Phase I: The Realm</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      overflow: hidden;
+      background: #07050a;
+      font-family: 'Crimson Text', serif;
+      color: #e8d5a0;
+      user-select: none;
+    }
+
+    #gameCanvas {
+      position: fixed; top:0; left:0;
+      display: block;
+      cursor: crosshair;
+    }
+    #gameCanvas.panning { cursor: grabbing; }
+
+    /* ── Loading ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: #07050a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px; z-index: 1000;
+      transition: opacity 0.7s ease;
+    }
+    #loading-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 700;
+      color: #c8922a;
+      letter-spacing: 14px;
+      text-shadow:
+        0 0 60px rgba(200,146,42,0.55),
+        0 0 20px rgba(200,146,42,0.35),
+        0 2px 4px rgba(0,0,0,0.8);
+    }
+    #loading-sub {
+      font-size: 0.8rem;
+      letter-spacing: 5px;
+      color: #7a5820;
+      text-transform: uppercase;
+    }
+    #loading-bar-wrap {
+      width: 260px; height: 2px;
+      background: rgba(200,146,42,0.12);
+    }
+    #loading-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, #a06018, #e8b040);
+      width: 0%;
+      transition: width 0.25s ease;
+      box-shadow: 0 0 10px rgba(200,146,42,0.7);
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed; inset: 0;
+      pointer-events: none;
+    }
+
+    #topbar {
+      position: absolute; top:0; left:0; right:0;
+      padding: 10px 18px;
+      background: linear-gradient(to bottom, rgba(7,5,10,0.82) 0%, transparent 100%);
+      display: flex; align-items: center; gap: 18px;
+      pointer-events: none;
+    }
+    #game-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.05rem; font-weight: 700;
+      color: #c8922a; letter-spacing: 5px;
+      text-shadow: 0 0 18px rgba(200,146,42,0.45);
+    }
+
+    /* ── Minimap ── */
+    #mm-wrap {
+      position: absolute;
+      bottom: 24px; right: 24px;
+      pointer-events: auto;
+    }
+    #mm-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.58rem; letter-spacing: 3px;
+      color: #5a4020; text-align: center;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    #minimap {
+      display: block; cursor: pointer;
+      border-radius: 2px;
+      box-shadow:
+        0 0 0 1px rgba(200,146,42,0.28),
+        0 0 0 3px rgba(7,5,10,0.6),
+        0 4px 24px rgba(0,0,0,0.7);
+    }
+
+    /* ── Controls hint ── */
+    #hint {
+      position: absolute;
+      top: 46px; left: 50%; transform: translateX(-50%);
+      background: rgba(7,5,10,0.72);
+      border: 1px solid rgba(200,146,42,0.08);
+      border-radius: 4px;
+      padding: 5px 16px;
+      font-size: 0.65rem; color: #3a2c14;
+      letter-spacing: 1.5px; white-space: nowrap;
+      transition: opacity 1.2s ease;
+    }
+    #hint.hidden { opacity: 0; pointer-events: none; }
+    #hint b { color: #6a4e22; }
+
+    /* ── Villager Panel ── */
+    #villager-panel {
+      position: absolute;
+      top: 110px; right: 24px;
+      background: rgba(7,5,10,0.84);
+      border: 1px solid rgba(200,146,42,0.2);
+      border-radius: 4px;
+      padding: 10px 16px;
+      min-width: 182px;
+      display: none;
+      pointer-events: auto;
+    }
+    #villager-panel.visible { display: block; }
+    #vp-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem; font-weight: 600;
+      color: #c8a050; letter-spacing: 2px;
+      margin-bottom: 2px;
+    }
+    #vp-role { font-size: 0.7rem; color: #7a5828; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 7px; }
+    #vp-state { font-size: 0.7rem; color: #4a3515; }
+    #vp-state b { color: #8a6830; }
+    #vp-hint { font-size: 0.62rem; color: #3a2510; margin-top: 8px; letter-spacing: 0.3px; line-height: 1.5; }
+    /* ── Upgrade section ── */
+    #vp-upgrade { margin-top: 9px; border-top: 1px solid rgba(200,146,42,0.12); padding-top: 7px; }
+    #vp-upgrade-label { font-size: 0.55rem; letter-spacing: 2px; color: #4a3418; text-transform: uppercase; margin-bottom: 5px; }
+    .upgrade-btn {
+      padding: 3px 7px; font-family: 'Cinzel', serif; font-size: 0.62rem;
+      background: rgba(200,146,42,0.10); border: 1px solid rgba(200,146,42,0.25);
+      color: #c8a050; cursor: pointer; border-radius: 2px; letter-spacing: 1px;
+      transition: background 0.12s;
+    }
+    .upgrade-btn:hover { background: rgba(200,146,42,0.25); }
+    #vp-upgrade-cost { font-size: 0.58rem; color: #4a3418; margin-top: 5px; }
+
+    /* ── Build Panel ── */
+    #build-panel {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(7,5,10,0.88);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 4px;
+      padding: 10px 16px 8px;
+      display: none; flex-direction: column;
+      align-items: center; gap: 7px;
+      pointer-events: auto;
+    }
+    #build-panel.visible { display: flex; }
+    #build-panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem; letter-spacing: 4px;
+      color: #c8922a; text-transform: uppercase;
+    }
+    #build-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .build-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 5px 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(200,146,42,0.15);
+      border-radius: 3px; cursor: pointer;
+      min-width: 50px; transition: background 0.12s, border-color 0.12s;
+      color: inherit; font-family: inherit;
+    }
+    .build-btn:hover { background: rgba(200,146,42,0.12); border-color: rgba(200,146,42,0.35); }
+    .build-btn.active { background: rgba(200,146,42,0.20); border-color: rgba(200,146,42,0.65); }
+    .build-btn-icon {
+      width: 22px; height: 22px;
+      background: rgba(255,255,255,0.06); border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; color: #c8a050;
+    }
+    .build-btn-name { font-size: 0.57rem; color: #7a5828; letter-spacing: 0.5px; white-space: nowrap; }
+    #build-ph { font-size: 0.60rem; color: #3a2510; letter-spacing: 0.5px; }
+
+    /* ── Resource Bar ── */
+    #res-bar {
+      display: flex; align-items: center; gap: 14px;
+      margin-left: 14px;
+    }
+    .res-chip {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem; letter-spacing: 1px;
+      color: #c8a050;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .res-chip-val { font-weight: 600; min-width: 24px; }
+
+    /* ── Hunger bar ── */
+    #hunger-wrap {
+      display: flex; align-items: center; gap: 7px;
+      margin-left: 10px;
+    }
+    #hunger-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.55rem; letter-spacing: 2px;
+      color: #4a3418; text-transform: uppercase;
+    }
+    #hunger-bar-outer {
+      width: 72px; height: 5px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.18);
+    }
+    #hunger-bar-inner {
+      height: 100%;
+      width: 100%;
+      background: #60c040;
+      transition: width 0.6s, background 0.6s;
+    }
+
+    /* ── Time of day ── */
+    #time-display {
+      font-family: 'Cinzel', serif;
+      font-size: 0.55rem; letter-spacing: 2px;
+      color: #4a3418; text-transform: uppercase;
+      margin-left: 8px;
+    }
+
+    /* ── Settle button ── */
+    #settle-btn {
+      position: absolute;
+      bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: rgba(200,146,42,0.16);
+      border: 1px solid rgba(200,146,42,0.45);
+      border-radius: 4px;
+      padding: 9px 28px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem; letter-spacing: 4px;
+      color: #c8922a;
+      cursor: pointer; pointer-events: auto;
+      text-transform: uppercase;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    #settle-btn:hover { background: rgba(200,146,42,0.28); border-color: rgba(200,146,42,0.70); }
+    #settle-btn.placing { background: rgba(80,200,80,0.13); border-color: rgba(80,200,80,0.5); color: #70d890; }
+    #settle-btn.hidden  { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div id="loading-title">EMPIRES</div>
+  <div id="loading-sub">Forging the realm…</div>
+  <div id="loading-bar-wrap"><div id="loading-bar-fill"></div></div>
+</div>
+
+<!-- Game canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD overlay -->
+<div id="hud">
+
+  <div id="topbar">
+    <div id="game-title">EMPIRES</div>
+    <div id="res-bar">
+      <div class="res-chip"><span>⚜</span><span class="res-chip-val" id="res-gold">100</span></div>
+      <div class="res-chip"><span>🪵</span><span class="res-chip-val" id="res-wood">0</span></div>
+      <div class="res-chip"><span>🌾</span><span class="res-chip-val" id="res-crops">0</span></div>
+      <div class="res-chip"><span>🍞</span><span class="res-chip-val" id="res-food">20</span></div>
+      <div class="res-chip"><span>🪨</span><span class="res-chip-val" id="res-stone">0</span></div>
+      <div class="res-chip"><span>⚙</span><span class="res-chip-val" id="res-iron">0</span></div>
+    </div>
+    <div id="hunger-wrap">
+      <span id="hunger-label">Hunger</span>
+      <div id="hunger-bar-outer"><div id="hunger-bar-inner"></div></div>
+    </div>
+    <div id="time-display">Morning</div>
+  </div>
+
+  <div id="hint">Roam freely &nbsp;·&nbsp; Find a good spot &nbsp;·&nbsp; <b>Settle</b> to found your kingdom</div>
+
+  <button id="settle-btn">Settle Here</button>
+
+  <div id="villager-panel">
+    <div id="vp-name">—</div>
+    <div id="vp-role">—</div>
+    <div id="vp-state">Status: <b id="vp-status">—</b></div>
+    <div id="vp-hunger" style="font-size:0.63rem;color:#5a3a14;margin-top:3px;">Hunger: <b id="vp-hunger-val">—</b></div>
+    <div id="vp-hint">Click tile to move · Esc deselect · F follow</div>
+    <div id="vp-upgrade" style="display:none;">
+      <div id="vp-upgrade-label">Train as</div>
+      <div id="vp-upgrade-btns" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      <div id="vp-upgrade-cost">Cost: ⚜ 20 gold</div>
+    </div>
+  </div>
+
+  <div id="build-panel">
+    <div id="build-panel-title">Build</div>
+    <div id="build-btns"></div>
+    <div id="build-ph">Click tile to place · Esc cancel</div>
+  </div>
+
+  <div id="mm-wrap">
+    <div id="mm-label">World Map</div>
+    <canvas id="minimap" width="168" height="168"></canvas>
+  </div>
+
+
+</div>
+
+<script src="js/constants.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/world.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/villagers.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

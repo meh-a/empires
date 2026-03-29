@@ -5,7 +5,8 @@
 // ═══════════════════════════════════════════════════
 function mkBuilding(type, tx, ty) {
   const [w, h] = STRUCT_SIZE[type] || [1, 1];
-  return { id:_bid++, type, tx, ty, w, h, progress:0, complete:false, assignedBuilders:[] };
+  const maxHp  = BLDG_HP_MAX[type] || 50;
+  return { id:_bid++, type, tx, ty, w, h, progress:0, complete:false, assignedBuilders:[], hp:maxHp, maxHp };
 }
 
 function canBuildAt(tx, ty, type) {
@@ -25,6 +26,32 @@ function canAffordBuilding(type) {
   return Object.entries(cost).every(([r,n]) => (res[r]||0) >= n);
 }
 
+// Solid building types block both villagers and enemies; Walls block enemies only
+const SOLID_TYPES = new Set([0,1,3,6,7]); // House, Bakery, Tower, Barracks, Forge
+
+function rebuildNavBlocked() {
+  navBlocked.fill(0);
+  villagerBlocked.fill(0);
+  for (const b of buildings) {
+    if (!b.complete) continue;
+    if (b.type === 2) {  // Wall: blocks enemies only
+      for (let dy=0; dy<b.h; dy++) for (let dx=0; dx<b.w; dx++)
+        navBlocked[(b.ty+dy)*MAP_W+(b.tx+dx)] = 1;
+    }
+    if (SOLID_TYPES.has(b.type)) {  // Solid: blocks both
+      for (let dy=0; dy<b.h; dy++) for (let dx=0; dx<b.w; dx++) {
+        const i = (b.ty+dy)*MAP_W+(b.tx+dx);
+        navBlocked[i] = 1;
+        villagerBlocked[i] = 1;
+      }
+    }
+  }
+  // Trees block villager pathfinding
+  for (const t of trees) {
+    villagerBlocked[t.ty * MAP_W + t.tx] = 1;
+  }
+}
+
 function placeBuilding(tx, ty, type) {
   if (!canBuildAt(tx,ty,type)) return false;
   if (!canAffordBuilding(type)) { notify('Not enough resources!'); return false; }
@@ -34,6 +61,7 @@ function placeBuilding(tx, ty, type) {
   if (cost.iron)  iron  -= cost.iron;
   if (cost.gold)  gold  -= cost.gold;
   buildings.push(mkBuilding(type,tx,ty));
+  rebuildNavBlocked();
   return true;
 }
 
@@ -50,7 +78,7 @@ function findBuildTarget(builder) {
 }
 
 function assignBuilderTo(builder, bld) {
-  const path=findPath(Math.floor(builder.x),Math.floor(builder.y),bld.tx,bld.ty);
+  const path=findPath(Math.floor(builder.x),Math.floor(builder.y),bld.tx,bld.ty,villagerBlocked);
   if (!path||path.length<1) {
     builder.state='idle'; builder.idleTimer=2+Math.random()*3; return;
   }

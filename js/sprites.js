@@ -21,29 +21,29 @@ const STRUCT_VALID = [
 ];
 
 // Tile footprint size per structure [w, h] — default 1×1
-const STRUCT_SIZE = [[2,2],[1,1],[1,1],[1,1],[1,1],[1,1],[1,1],[1,1]];
+const STRUCT_SIZE = [[1,1],[1,1],[1,1],[1,1],[1,1],[1,1],[1,1],[1,1]];
 
 // Building pixel-art stamp sprites (16×16, 3/4 perspective: top=roof, bottom=front face)
 const BSTAMP = [
   // 0 House — warm plaster walls, red-tile roof
-  [
-    '................',
-    '.....rrrrrrrr...',
-    '....rRRRRRRRRr..',
-    '...rRRRLLRRRRRr.',
-    '...rRRRLLRRRRRr.',
-    '...rRRRRRRRRRRr.',
-    '..rrrrrrrrrrrrr.',
-    'EEEEEEEEEEEEEEEE',
-    'EwwwwwwwwwwwwwE.',
-    'EwwDDwwwwwwDDwE.',
-    'EwwDDwwwwwwDDwE.',
-    'EwwwwwwwwwwwwwE.',
-    'EwwwwwddddwwwwE.',
-    'EwwwwwddddwwwwE.',
-    'ssssssssssssssss',
-    '................',
-  ],
+[
+  '.......rr.......',
+  '.....rrRRrr.....',
+  '....rrRRRRRrr...',
+  '..rrRRRrrRRRRrr.',
+  'rrRRrrrRRrrRRRRr',
+  'rRRrrRRRRRRrrrRr',
+  'rrrRRRRRRRRRRrrr',
+  'rEEEEEEEEEEEEEEr',
+  '.EwwwwwwwwwwwwE.',
+  '.EwDDwwwwwwDDwE.',
+  '.EwDDwwwwwwDDwE.',
+  '.EwwwwwwwwwwwwE.',
+  '.EwwwwddddwwwwE.',
+  '.EwwwwddddwwwwE.',
+  '.ssssssssssssss.',
+  '................'
+],
   // 1 Bakery — warm brick, chimney, oven glow
   [
     '..c.............',
@@ -381,6 +381,17 @@ VSPRITE.Baker = [
   ],
 ];
 VPAL.Baker = { '.':null, 'W':'#ece8e0', 'w':'#b8b0a0', 's':'#d4a060', 'e':'#180800', 'A':'#f0ece4', 'a':'#b0a898', 'P':'#5a4838', 'p':'#3a2e24' };
+
+// Archer — forest-green hood, leather quiver on back, bow stance
+VSPRITE.Archer = [
+  [
+    '.....VVVVVV.....','....VVVvvVVV....','....VVssssVV....','....seessssss...','....seessssss...','......ssss......','....GGGGGGGG....','...GGGGGGGGGG...','...GGGGGQGGGg...','...GGGGGQGGgg...','....GGGGGGgg....','....GGGGGGGg....','....LL....LL....','....ll....ll....','....ll....ll....','................',
+  ],
+  [
+    '.....VVVVVV.....','....VVVvvVVV....','....VVssssVV....','....seessssss...','....seessssss...','......ssss......','....GGGGGGGG....','...GGGGGGGGGG...','...GGGGGQGGGg...','...GGGGGQGGgg...','....GGGGGGgg....','....GGGGGGGg....','...LLL....LL....','...lll....ll....','...lll....ll....','................',
+  ],
+];
+VPAL.Archer = { '.':null, 'V':'#2a6020', 'v':'#1a3c14', 's':'#d4a060', 'e':'#180800', 'G':'#3a7030', 'g':'#1e4018', 'Q':'#5a3a18', 'L':'#5a3818', 'l':'#3a2010' };
 
 function pickName() {
   const pool = V_NAMES.filter(n => !_usedNames.has(n));

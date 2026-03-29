@@ -64,7 +64,7 @@ function updateVillagerPanel() {
     }
   }
 
-  const labels = { idle:'Resting', roaming:'Wandering', patrolling:'Patrolling', moving:'Moving', building:'Building…', chopping:'Chopping…', sleeping:'Sleeping', farming:'Farming…', baking:'Baking…', mining:'Mining…', forging:'Forging…' };
+  const labels = { idle:'Resting', roaming:'Wandering', patrolling:'Patrolling', moving:'Moving', building:'Building…', chopping:'Chopping…', sleeping:'Sleeping', farming:'Farming…', baking:'Baking…', mining:'Mining…', forging:'Forging…', guarding:'On Guard' };
   vpStatus.textContent = labels[v.state] || '—';
   const hv = document.getElementById('vp-hunger-val');
   if (hv) hv.textContent = Math.round(v.hunger*100) + '%';
@@ -75,7 +75,7 @@ function updateVillagerPanel() {
   if (v.role === VROLE.BASIC) {
     upgDiv.style.display = 'block';
     upgBtns.innerHTML = '';
-    const trainRoles = [VROLE.WOODCUTTER,VROLE.BUILDER,VROLE.FARMER,VROLE.BAKER,VROLE.STONE_MINER,VROLE.TOOLSMITH,VROLE.KNIGHT];
+    const trainRoles = [VROLE.WOODCUTTER,VROLE.BUILDER,VROLE.FARMER,VROLE.BAKER,VROLE.STONE_MINER,VROLE.TOOLSMITH,VROLE.KNIGHT,VROLE.ARCHER];
     for (const r of trainRoles) {
       const btn = document.createElement('button');
       btn.className = 'upgrade-btn';
@@ -186,8 +186,9 @@ function canSettleAt(tx, ty) {
 }
 
 function placeTownCenter(tx, ty) {
-  townCenter={tx,ty};
+  townCenter={tx,ty,hp:TC_HP_MAX,maxHp:TC_HP_MAX};
   settled=true; placingTownCenter=false;
+  initEnemyKingdom();
   document.getElementById('settle-btn').classList.add('hidden');
   const hint=document.getElementById('hint');
   hint.classList.remove('hidden');
@@ -227,6 +228,13 @@ addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
 
 canvas.addEventListener('mousedown', e=>{
   if (e.button===1||e.button===2) {
+    // Check for combat attack (right-click on knight-selected + enemy target)
+    if (e.button===2 && selectedVillager?.role===VROLE.KNIGHT) {
+      const sz=TILE_SZ*zoom;
+      const wx=(e.clientX+camX)/sz, wy=(e.clientY+camY)/sz;
+      const target=findCombatTarget(wx,wy);
+      if (target) { directKnightAttack(selectedVillager,target); e.preventDefault(); return; }
+    }
     dragging=true;
     dragX=e.clientX; dragY=e.clientY;
     dragCX=camX;     dragCY=camY;
@@ -408,6 +416,8 @@ function update(dt) {
   updateCameraFollow(dt);
   updateDayNight(dt);
   updateVillagers(dt);
+  updateNPCs(dt);
+  updateCombat(dt);
   updateSpawning(dt);
   updateGold(dt);
   updateFeeding(dt);

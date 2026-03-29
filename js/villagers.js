@@ -4,6 +4,7 @@
 //  VILLAGERS
 // ═══════════════════════════════════════════════════
 function mkVillager(role, tx, ty) {
+  const maxHp = UNIT_HP_MAX[role] || 15;
   return {
     id: _vid++, role, name: pickName(),
     x: tx+0.5, y: ty+0.5,
@@ -27,6 +28,10 @@ function mkVillager(role, tx, ty) {
     tier: 1,
     xp: 0,
     toolTier: 0,
+    hp: maxHp, maxHp,
+    attackTimer: 0,
+    attackAnim: 0,
+    towerTarget: null,
   };
 }
 
@@ -57,6 +62,10 @@ function spawnVillagers() {
   gold=100; wood=0; food=20; crops=0; stone=0; iron=0;
   toolStock=[999,0,0];
   dayTime=0.3; day=1;
+  npcs=[]; _npcId=0; npcVisitTimer=0; npcModal=null;
+  document.getElementById('npc-modal')?.classList.add('npc-hidden');
+  enemyKingdom=null; enemyUnits=[]; projectiles=[]; gameState='playing'; alertMode=false; _defendRerouteTimer=0;
+  document.getElementById('gameover')?.classList.add('go-hidden');
   settled=false; placingTownCenter=false; townCenter=null;
   const cx = MAP_W>>1, cy = MAP_H>>1;
 
@@ -85,6 +94,7 @@ function spawnVillagers() {
     villagers.push(mkVillager(roles[i], chosen[i].x, chosen[i].y));
   spawnTimer = 0; goldTimer = 0; feedTimer = 0;
   generateTrees();
+  rebuildNavBlocked(); // initial tree state
 }
 
 function updateVillagers(dt) {
@@ -112,6 +122,7 @@ function updateVillagers(dt) {
         v.chopTimer=0; wood+=CHOP_YIELD; gainXP(v);
         const {id:tid,tx:ct,ty:cty}=v.chopTarget;
         trees=trees.filter(t=>t.id!==tid);
+        rebuildNavBlocked(); // tree removed, update villager path grid
         // Change tile to grass if that tile now has no trees
         if (!trees.some(t=>t.tx===ct&&t.ty===cty)&&mapTiles[cty]&&mapTiles[cty][ct]===T.FOREST) {
           mapTiles[cty][ct]=T.GRASS;
@@ -198,6 +209,23 @@ function updateVillagers(dt) {
       continue;
     }
 
+    // ── Guarding state (Archer stationed at Tower) ──
+    if (v.state === 'guarding') {
+      // Return to idle if tower gone or night
+      if (!buildings.some(b=>b.id===v.towerTarget&&b.complete&&b.type===3)) {
+        v.state='idle'; v.idleTimer=1; v.towerTarget=null;
+        if (v.selected) updateVillagerPanel();
+      }
+      if (isNight() && !v._goingSleep) {
+        const house=findNearestHouse(v);
+        if (house) {
+          const path=findPath(v.tx,v.ty,house.tx,house.ty,villagerBlocked);
+          if (path&&path.length>1) { v.path=path.slice(1); v.state='moving'; v._goingSleep=true; if (v.selected) updateVillagerPanel(); }
+        }
+      }
+      continue;
+    }
+
     // ── Building state ─────────────────────────────
     if (v.state==='building') {
       const bld=buildings.find(b=>b.id===v.buildTarget);
@@ -208,6 +236,7 @@ function updateVillagers(dt) {
         bld.progress=Math.min(1, bld.progress+(1/STRUCT_BUILD_TIME[bld.type])*dt*workSpeed(v));
         if (bld.progress>=1) {
           bld.complete=true; bld.assignedBuilders=[];
+          rebuildNavBlocked(); // building completed → update nav grids
           v.buildTarget=null; v.state='idle'; v.idleTimer=1+Math.random()*2;
           gainXP(v);
           if (v.selected) updateVillagerPanel();
@@ -225,7 +254,7 @@ function updateVillagers(dt) {
           if (v.selected) updateVillagerPanel();
           continue;
         }
-        const path=findPath(v.tx,v.ty,house.tx,house.ty);
+        const path=findPath(v.tx,v.ty,house.tx,house.ty,villagerBlocked);
         if (path&&path.length>1) {
           v.path=path.slice(1); v.state='moving'; v._goingSleep=true;
           if (v.selected) updateVillagerPanel();
@@ -351,7 +380,8 @@ function startRoam(v) {
       const pty = Math.round(townCenter.ty + Math.sin(v.patrolAngle)*r);
       if (ptx<0||ptx>=MAP_W||pty<0||pty>=MAP_H) continue;
       if (!WALKABLE_TILES.has(mapTiles[pty][ptx])) continue;
-      const path=findPath(v.tx,v.ty,ptx,pty);
+      if (villagerBlocked[pty*MAP_W+ptx]) continue;
+      const path=findPath(v.tx,v.ty,ptx,pty,villagerBlocked);
       if (path&&path.length>1) {
         v.path=path.slice(1); v.state='patrolling';
         if (v.selected) updateVillagerPanel();
@@ -365,18 +395,36 @@ function startRoam(v) {
     if (mine) {
       v.mineTarget=mine;
       if (v.tx===mine.tx&&v.ty===mine.ty) { v.state='mining'; v.mineTimer=0; if (v.selected) updateVillagerPanel(); return; }
-      const path=findPath(v.tx,v.ty,mine.tx,mine.ty);
+      const path=findPath(v.tx,v.ty,mine.tx,mine.ty,villagerBlocked);
       if (path&&path.length>1) { v.path=path.slice(1); v.state='moving'; if (v.selected) updateVillagerPanel(); return; }
       v.mineTarget=null;
     }
   }
+  // Archers seek nearest complete Tower
+  if (v.role === VROLE.ARCHER) {
+    const tower = buildings.find(b=>b.type===3&&b.complete);
+    if (tower) {
+      if (v.tx===tower.tx&&v.ty===tower.ty) {
+        v.state='guarding'; v.towerTarget=tower.id;
+        if (v.selected) updateVillagerPanel();
+        return;
+      }
+      const path=findPath(v.tx,v.ty,tower.tx,tower.ty,villagerBlocked);
+      if (path&&path.length>1) {
+        v.path=path.slice(1); v.state='moving'; v.towerTarget=tower.id;
+        if (v.selected) updateVillagerPanel();
+        return;
+      }
+    }
+  }
+
   // Toolsmiths seek nearest complete Forge
   if (v.role===VROLE.TOOLSMITH) {
     const forge=buildings.find(b=>b.type===7&&b.complete);
     if (forge) {
       v.forgeTarget=forge;
       if (v.tx===forge.tx&&v.ty===forge.ty) { v.state='forging'; v.forgeTimer=0; if (v.selected) updateVillagerPanel(); return; }
-      const path=findPath(v.tx,v.ty,forge.tx,forge.ty);
+      const path=findPath(v.tx,v.ty,forge.tx,forge.ty,villagerBlocked);
       if (path&&path.length>1) { v.path=path.slice(1); v.state='moving'; if (v.selected) updateVillagerPanel(); return; }
       v.forgeTarget=null;
     }
@@ -391,7 +439,7 @@ function startRoam(v) {
         if (v.selected) updateVillagerPanel();
         return;
       }
-      const path=findPath(v.tx,v.ty,bakery.tx,bakery.ty);
+      const path=findPath(v.tx,v.ty,bakery.tx,bakery.ty,villagerBlocked);
       if (path&&path.length>1) {
         v.path=path.slice(1); v.state='moving';
         if (v.selected) updateVillagerPanel();
@@ -405,7 +453,7 @@ function startRoam(v) {
     const tgt=findChopTarget(v);
     if (tgt) {
       v.chopTarget=tgt;
-      const path=findPath(v.tx,v.ty,tgt.tx,tgt.ty);
+      const path=findPath(v.tx,v.ty,tgt.tx,tgt.ty,villagerBlocked);
       if (path&&path.length>0) {
         if (path.length===1) { v.state='chopping'; v.chopTimer=0; }
         else { v.path=path.slice(1); v.state='moving'; }
@@ -425,7 +473,7 @@ function startRoam(v) {
         if (v.selected) updateVillagerPanel();
         return;
       }
-      const path=findPath(v.tx,v.ty,farm.tx,farm.ty);
+      const path=findPath(v.tx,v.ty,farm.tx,farm.ty,villagerBlocked);
       if (path&&path.length>1) {
         v.path=path.slice(1); v.state='moving';
         if (v.selected) updateVillagerPanel();
@@ -445,8 +493,9 @@ function startRoam(v) {
     }
     if (tx<0||tx>=MAP_W||ty<0||ty>=MAP_H) continue;
     if (!WALKABLE_TILES.has(mapTiles[ty][tx])) continue;
+    if (villagerBlocked[ty*MAP_W+tx]) continue;
     if (tx===v.tx&&ty===v.ty) continue;
-    const path=findPath(v.tx,v.ty,tx,ty);
+    const path=findPath(v.tx,v.ty,tx,ty,villagerBlocked);
     if (path&&path.length>1) {
       v.path=path.slice(1); v.state='roaming';
       if (v.selected) updateVillagerPanel();
@@ -460,19 +509,31 @@ function moveVillagerTo(v, tx, ty) {
   if (tx<0||tx>=MAP_W||ty<0||ty>=MAP_H) return false;
   if (!WALKABLE_TILES.has(mapTiles[ty][tx])) return false;
   const stx=Math.floor(v.x), sty=Math.floor(v.y);
-  const path=findPath(stx,sty,tx,ty);
+  const path=findPath(stx,sty,tx,ty,villagerBlocked);
   if (!path||path.length<2) return false;
   v.path=path.slice(1); v.state='moving';
   if (v.selected) updateVillagerPanel();
   return true;
 }
 
+const HOUSE_CAP = 4;
+
 function findNearestHouse(v) {
-  let best=null, bestDist=Infinity;
+  // Count how many villagers are already sleeping or heading to each house
+  const occ = {};
+  for (const ov of villagers) {
+    if (ov.id === v.id) continue;
+    if (ov.state === 'sleeping' || ov._goingSleep) {
+      const key = `${ov.tx},${ov.ty}`;
+      occ[key] = (occ[key] || 0) + 1;
+    }
+  }
+  let best = null, bestDist = Infinity;
   for (const b of buildings) {
-    if (b.type!==0||!b.complete) continue;
-    const d=Math.abs(b.tx-v.tx)+Math.abs(b.ty-v.ty);
-    if (d<bestDist) { bestDist=d; best=b; }
+    if (b.type !== 0 || !b.complete) continue;
+    if ((occ[`${b.tx},${b.ty}`] || 0) >= HOUSE_CAP) continue;
+    const d = Math.abs(b.tx - v.tx) + Math.abs(b.ty - v.ty);
+    if (d < bestDist) { bestDist = d; best = b; }
   }
   return best;
 }
@@ -523,11 +584,13 @@ function upgradeBasicVillager(v) {
   const hasBakery   = buildings.some(b=>b.type===1&&b.complete);
   const hasMine     = buildings.some(b=>b.type===5&&b.complete);
   const hasForge    = buildings.some(b=>b.type===7&&b.complete);
+  const hasTower    = buildings.some(b=>b.type===3&&b.complete);
   const candidates = [];
   if (hasFarmland   && (counts[VROLE.FARMER]||0)<3)       candidates.push(VROLE.FARMER);
   if (hasBakery     && (counts[VROLE.BAKER]||0)<2)        candidates.push(VROLE.BAKER);
   if (hasMine       && (counts[VROLE.STONE_MINER]||0)<3)  candidates.push(VROLE.STONE_MINER);
   if (hasForge      && (counts[VROLE.TOOLSMITH]||0)<1)    candidates.push(VROLE.TOOLSMITH);
+  if (hasTower      && (counts[VROLE.ARCHER]||0)<2)       candidates.push(VROLE.ARCHER);
   if ((counts[VROLE.WOODCUTTER]||0)<3) candidates.push(VROLE.WOODCUTTER);
   if ((counts[VROLE.BUILDER]||0)<2) candidates.push(VROLE.BUILDER);
   candidates.push(VROLE.WOODCUTTER); // fallback

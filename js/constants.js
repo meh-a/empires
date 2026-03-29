@@ -97,7 +97,7 @@ let showGrid = false;
 let mmCache  = null;  // offscreen minimap canvas
 
 // ── Villager role constants ──────────────────────────────────────
-const VROLE = { WOODCUTTER:'Woodcutter', BUILDER:'Builder', KNIGHT:'Knight', BASIC:'Basic', FARMER:'Farmer', BAKER:'Baker', STONE_MINER:'StoneMiner', TOOLSMITH:'Toolsmith' };
+const VROLE = { WOODCUTTER:'Woodcutter', BUILDER:'Builder', KNIGHT:'Knight', BASIC:'Basic', FARMER:'Farmer', BAKER:'Baker', STONE_MINER:'StoneMiner', TOOLSMITH:'Toolsmith', ARCHER:'Archer' };
 
 const ROLE_COLOR = {
   Woodcutter: [139, 69,  19],
@@ -108,9 +108,10 @@ const ROLE_COLOR = {
   Baker:      [220,200, 160],
   StoneMiner: [128,110,  90],
   Toolsmith:  [ 90, 70,  48],
+  Archer:     [ 60,160,  50],
 };
 
-const ROLE_LETTER = { Woodcutter:'W', Builder:'B', Knight:'K', Basic:'V', Farmer:'F', Baker:'A', StoneMiner:'M', Toolsmith:'T' };
+const ROLE_LETTER = { Woodcutter:'W', Builder:'B', Knight:'K', Basic:'V', Farmer:'F', Baker:'A', StoneMiner:'M', Toolsmith:'T', Archer:'R' };
 
 // ── Gameplay constants ──────────────────────────────
 const FARM_TIME        = 12;   // seconds per farming cycle
@@ -131,6 +132,33 @@ const TIER_XP_REQ   = [10, 30];          // cycles needed to reach tier 2, then 
 const TIER_SPEED    = [1.0, 1.15, 1.35]; // work-speed multiplier per villager tier
 // Tool inventory
 let toolStock = [999, 0, 0];  // count of available tools per tier (wood is unlimited)
+// ── Combat constants ─────────────────────────────────────────────
+// Building HP: [House, Bakery, Wall, Tower, Farmland, Mine, Barracks, Forge]
+const BLDG_HP_MAX    = [80, 30, 100, 120, 20, 50, 80, 50];
+const TC_HP_MAX      = 250;
+const UNIT_HP_MAX    = { Woodcutter:15, Builder:20, Knight:55, Basic:12, Farmer:10, Baker:10, StoneMiner:20, Toolsmith:15, Archer:22 };
+// Player knight melee
+const KNIGHT_ATK_DMG   = 14;
+const KNIGHT_ATK_RANGE = 1.6;   // tiles
+const KNIGHT_ATK_SPD   = 1.3;   // seconds/attack
+// Player archer ranged
+const ARCHER_ATK_DMG   = 9;
+const ARCHER_ATK_RANGE = 7.0;
+const ARCHER_ATK_SPD   = 2.0;
+// Enemy units
+const ENEMY_INF_HP    = 30;
+const ENEMY_ARC_HP    = 18;
+const ENEMY_INF_DMG   = 10;
+const ENEMY_ARC_DMG   = 6;
+const ENEMY_MELEE_RNG = 1.3;
+const ENEMY_ARC_RNG   = 5.5;
+const ENEMY_ATK_SPD   = 1.8;
+const ENEMY_SPEED     = 1.8;   // tiles/sec
+// Raid pacing
+const RAID_INTERVAL   = 300;   // seconds between raids (at base territory)
+const RAID_SIZE_MIN   = 3;
+const RAID_SIZE_MAX   = 10;
+
 // ── Building costs (matches STRUCT_NAME order) ──────────────────
 // [House, Bakery, Wall, Tower, Farmland, Mine, Barracks, Forge]
 const STRUCT_COST = [
@@ -166,6 +194,10 @@ let villagers = [];
 let selectedVillager = null;
 let cameraFollow = true;
 let _vid = 0;
+
+// ── Navigation blocked grids ──────────────────────────────────────
+let navBlocked      = new Uint8Array(MAP_W * MAP_H); // enemies: walls + solid buildings
+let villagerBlocked = new Uint8Array(MAP_W * MAP_H); // villagers: solid buildings + trees
 
 // ── Tree constants ────────────────────────────────────
 const TREE_SPAWN_CHANCE = 0.65; // probability a forest tile gets a pine tree

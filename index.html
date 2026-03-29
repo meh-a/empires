@@ -67,11 +67,12 @@
       pointer-events: none;
     }
 
+    /* ── Topbar ── */
     #topbar {
       position: absolute; top:0; left:0; right:0;
-      padding: 10px 18px;
-      background: linear-gradient(to bottom, rgba(7,5,10,0.82) 0%, transparent 100%);
-      display: flex; align-items: center; gap: 18px;
+      padding: 8px 16px;
+      background: linear-gradient(to bottom, rgba(7,5,10,0.88) 0%, transparent 100%);
+      display: flex; align-items: center; gap: 12px;
       pointer-events: none;
     }
     #game-title {
@@ -79,137 +80,57 @@
       font-size: 1.05rem; font-weight: 700;
       color: #c8922a; letter-spacing: 5px;
       text-shadow: 0 0 18px rgba(200,146,42,0.45);
+      flex-shrink: 0;
     }
 
-    /* ── Minimap ── */
-    #mm-wrap {
-      position: absolute;
-      bottom: 24px; right: 24px;
-      pointer-events: auto;
-    }
-    #mm-label {
-      font-family: 'Cinzel', serif;
-      font-size: 0.58rem; letter-spacing: 3px;
-      color: #5a4020; text-align: center;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-    #minimap {
-      display: block; cursor: pointer;
-      border-radius: 2px;
-      box-shadow:
-        0 0 0 1px rgba(200,146,42,0.28),
-        0 0 0 3px rgba(7,5,10,0.6),
-        0 4px 24px rgba(0,0,0,0.7);
-    }
-
-    /* ── Controls hint ── */
-    #hint {
-      position: absolute;
-      top: 46px; left: 50%; transform: translateX(-50%);
-      background: rgba(7,5,10,0.72);
-      border: 1px solid rgba(200,146,42,0.08);
-      border-radius: 4px;
-      padding: 5px 16px;
-      font-size: 0.65rem; color: #3a2c14;
-      letter-spacing: 1.5px; white-space: nowrap;
-      transition: opacity 1.2s ease;
-    }
-    #hint.hidden { opacity: 0; pointer-events: none; }
-    #hint b { color: #6a4e22; }
-
-    /* ── Villager Panel ── */
-    #villager-panel {
-      position: absolute;
-      top: 110px; right: 24px;
-      background: rgba(7,5,10,0.84);
-      border: 1px solid rgba(200,146,42,0.2);
-      border-radius: 4px;
-      padding: 10px 16px;
-      min-width: 182px;
-      display: none;
-      pointer-events: auto;
-    }
-    #villager-panel.visible { display: block; }
-    #vp-name {
-      font-family: 'Cinzel', serif;
-      font-size: 0.85rem; font-weight: 600;
-      color: #c8a050; letter-spacing: 2px;
-      margin-bottom: 2px;
-    }
-    #vp-role { font-size: 0.7rem; color: #7a5828; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 7px; }
-    #vp-state { font-size: 0.7rem; color: #4a3515; }
-    #vp-state b { color: #8a6830; }
-    #vp-hint { font-size: 0.62rem; color: #3a2510; margin-top: 8px; letter-spacing: 0.3px; line-height: 1.5; }
-    /* ── Upgrade section ── */
-    #vp-upgrade { margin-top: 9px; border-top: 1px solid rgba(200,146,42,0.12); padding-top: 7px; }
-    #vp-upgrade-label { font-size: 0.55rem; letter-spacing: 2px; color: #4a3418; text-transform: uppercase; margin-bottom: 5px; }
-    .upgrade-btn {
-      padding: 3px 7px; font-family: 'Cinzel', serif; font-size: 0.62rem;
-      background: rgba(200,146,42,0.10); border: 1px solid rgba(200,146,42,0.25);
-      color: #c8a050; cursor: pointer; border-radius: 2px; letter-spacing: 1px;
-      transition: background 0.12s;
-    }
-    .upgrade-btn:hover { background: rgba(200,146,42,0.25); }
-    #vp-upgrade-cost { font-size: 0.58rem; color: #4a3418; margin-top: 5px; }
-
-    /* ── Build Panel ── */
-    #build-panel {
-      position: absolute;
-      bottom: 24px; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(7,5,10,0.88);
-      border: 1px solid rgba(200,146,42,0.25);
-      border-radius: 4px;
-      padding: 10px 16px 8px;
-      display: none; flex-direction: column;
-      align-items: center; gap: 7px;
-      pointer-events: auto;
-    }
-    #build-panel.visible { display: flex; }
-    #build-panel-title {
-      font-family: 'Cinzel', serif;
-      font-size: 0.65rem; letter-spacing: 4px;
-      color: #c8922a; text-transform: uppercase;
-    }
-    #build-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-    .build-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 5px 8px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(200,146,42,0.15);
-      border-radius: 3px; cursor: pointer;
-      min-width: 50px; transition: background 0.12s, border-color 0.12s;
-      color: inherit; font-family: inherit;
-    }
-    .build-btn:hover { background: rgba(200,146,42,0.12); border-color: rgba(200,146,42,0.35); }
-    .build-btn.active { background: rgba(200,146,42,0.20); border-color: rgba(200,146,42,0.65); }
-    .build-btn-icon {
-      width: 22px; height: 22px;
-      background: rgba(255,255,255,0.06); border-radius: 2px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.8rem; color: #c8a050;
-    }
-    .build-btn-name { font-size: 0.57rem; color: #7a5828; letter-spacing: 0.5px; white-space: nowrap; }
-    #build-ph { font-size: 0.60rem; color: #3a2510; letter-spacing: 0.5px; }
-
-    /* ── Resource Bar ── */
+    /* Resource groups */
     #res-bar {
-      display: flex; align-items: center; gap: 14px;
-      margin-left: 14px;
+      display: flex; align-items: center; gap: 0;
+      margin-left: 10px;
+      background: rgba(7,5,10,0.55);
+      border: 1px solid rgba(200,146,42,0.12);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .res-group {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px;
+    }
+    .res-group + .res-group {
+      border-left: 1px solid rgba(200,146,42,0.12);
     }
     .res-chip {
       font-family: 'Cinzel', serif;
-      font-size: 0.72rem; letter-spacing: 1px;
+      font-size: 0.70rem; letter-spacing: 0.5px;
       color: #c8a050;
-      display: flex; align-items: center; gap: 5px;
+      display: flex; align-items: center; gap: 4px;
     }
-    .res-chip-val { font-weight: 600; min-width: 24px; }
+    .res-chip-val { font-weight: 600; min-width: 22px; text-align: right; }
+    .res-chip-icon { font-size: 0.85rem; line-height: 1; }
 
-    /* ── Hunger bar ── */
+    /* Food-low pulse */
+    @keyframes pulse-low {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.45; }
+    }
+    .res-low .res-chip-val { color: #e05030; animation: pulse-low 1.2s ease infinite; }
+
+    /* Right side of topbar */
+    #topbar-right {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .hud-pill {
+      font-family: 'Cinzel', serif;
+      font-size: 0.58rem; letter-spacing: 2px;
+      color: #5a4020; text-transform: uppercase;
+      background: rgba(7,5,10,0.55);
+      border: 1px solid rgba(200,146,42,0.10);
+      border-radius: 3px;
+      padding: 3px 8px;
+    }
     #hunger-wrap {
-      display: flex; align-items: center; gap: 7px;
-      margin-left: 10px;
+      display: flex; align-items: center; gap: 6px;
     }
     #hunger-label {
       font-family: 'Cinzel', serif;
@@ -217,9 +138,11 @@
       color: #4a3418; text-transform: uppercase;
     }
     #hunger-bar-outer {
-      width: 72px; height: 5px;
+      width: 64px; height: 4px;
       background: rgba(200,146,42,0.10);
       border: 1px solid rgba(200,146,42,0.18);
+      border-radius: 2px;
+      overflow: hidden;
     }
     #hunger-bar-inner {
       height: 100%;
@@ -228,13 +151,20 @@
       transition: width 0.6s, background 0.6s;
     }
 
-    /* ── Time of day ── */
-    #time-display {
-      font-family: 'Cinzel', serif;
-      font-size: 0.55rem; letter-spacing: 2px;
-      color: #4a3418; text-transform: uppercase;
-      margin-left: 8px;
+    /* ── Controls hint ── */
+    #hint {
+      position: absolute;
+      top: 48px; left: 50%; transform: translateX(-50%);
+      background: rgba(7,5,10,0.72);
+      border: 1px solid rgba(200,146,42,0.08);
+      border-radius: 4px;
+      padding: 4px 16px;
+      font-size: 0.65rem; color: #3a2c14;
+      letter-spacing: 1.5px; white-space: nowrap;
+      transition: opacity 1.2s ease;
     }
+    #hint.hidden { opacity: 0; pointer-events: none; }
+    #hint b { color: #6a4e22; }
 
     /* ── Settle button ── */
     #settle-btn {
@@ -254,6 +184,311 @@
     #settle-btn:hover { background: rgba(200,146,42,0.28); border-color: rgba(200,146,42,0.70); }
     #settle-btn.placing { background: rgba(80,200,80,0.13); border-color: rgba(80,200,80,0.5); color: #70d890; }
     #settle-btn.hidden  { display: none; }
+
+    /* ── Villager Panel (bottom-left) ── */
+    #villager-panel {
+      position: absolute;
+      bottom: 24px; left: 24px;
+      background: rgba(7,5,10,0.88);
+      border: 1px solid rgba(200,146,42,0.22);
+      border-radius: 5px;
+      padding: 10px 14px 10px;
+      min-width: 200px;
+      display: none;
+      pointer-events: auto;
+    }
+    #villager-panel.visible { display: block; }
+
+    #vp-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 4px;
+    }
+    #vp-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #c8a050;
+      flex-shrink: 0;
+    }
+    #vp-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem; font-weight: 600;
+      color: #c8a050; letter-spacing: 1.5px;
+    }
+    #vp-role {
+      font-size: 0.68rem; color: #7a5828;
+      letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    #vp-tier {
+      display: inline-block;
+      font-size: 0.52rem; letter-spacing: 1.5px;
+      color: #4a3418; text-transform: uppercase;
+      background: rgba(200,146,42,0.08);
+      border: 1px solid rgba(200,146,42,0.15);
+      border-radius: 2px;
+      padding: 1px 5px;
+      margin-top: 2px;
+    }
+
+    /* XP bar */
+    #vp-xp-wrap {
+      margin-top: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #vp-xp-outer {
+      flex: 1; height: 3px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #vp-xp-bar {
+      height: 100%;
+      background: linear-gradient(to right, #7a5018, #e8b040);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    #vp-xp-label {
+      font-size: 0.52rem; color: #3a2510;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    /* Status / hunger row */
+    #vp-body { margin-top: 7px; }
+    #vp-state { font-size: 0.68rem; color: #4a3515; }
+    #vp-state b { color: #8a6830; }
+    #vp-hunger { font-size: 0.62rem; color: #5a3a14; margin-top: 2px; }
+    #vp-hint { font-size: 0.60rem; color: #3a2510; margin-top: 7px;
+      letter-spacing: 0.3px; line-height: 1.5; border-top: 1px solid rgba(200,146,42,0.08); padding-top: 5px; }
+
+    /* Upgrade section */
+    #vp-upgrade { margin-top: 8px; border-top: 1px solid rgba(200,146,42,0.12); padding-top: 7px; }
+    #vp-upgrade-label { font-size: 0.55rem; letter-spacing: 2px; color: #4a3418; text-transform: uppercase; margin-bottom: 5px; }
+    .upgrade-btn {
+      padding: 3px 7px; font-family: 'Cinzel', serif; font-size: 0.60rem;
+      background: rgba(200,146,42,0.10); border: 1px solid rgba(200,146,42,0.25);
+      color: #c8a050; cursor: pointer; border-radius: 2px; letter-spacing: 0.8px;
+      transition: background 0.12s;
+    }
+    .upgrade-btn:hover { background: rgba(200,146,42,0.25); }
+    .upgrade-btn:disabled { opacity: 0.35; cursor: default; }
+    #vp-upgrade-cost { font-size: 0.56rem; color: #4a3418; margin-top: 5px; }
+
+    /* ── Build Panel (bottom-center) ── */
+    #build-panel {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(7,5,10,0.90);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 5px;
+      padding: 10px 14px 8px;
+      display: none; flex-direction: column;
+      align-items: center; gap: 7px;
+      pointer-events: auto;
+    }
+    #build-panel.visible { display: flex; }
+    #build-panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.63rem; letter-spacing: 4px;
+      color: #c8922a; text-transform: uppercase;
+    }
+    #build-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+    .build-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 5px 7px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(200,146,42,0.15);
+      border-radius: 3px; cursor: pointer;
+      min-width: 46px; transition: background 0.12s, border-color 0.12s;
+      color: inherit; font-family: inherit;
+    }
+    .build-btn:hover { background: rgba(200,146,42,0.12); border-color: rgba(200,146,42,0.35); }
+    .build-btn.active { background: rgba(200,146,42,0.22); border-color: rgba(200,146,42,0.65); }
+    .build-btn-icon {
+      width: 20px; height: 20px;
+      background: rgba(255,255,255,0.06); border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; color: #c8a050;
+      font-family: 'Cinzel', serif;
+    }
+    .build-btn-name { font-size: 0.54rem; color: #7a5828; letter-spacing: 0.3px; white-space: nowrap; }
+    .build-btn-cost { font-size: 0.50rem; color: #4a3218; letter-spacing: 0.3px; white-space: nowrap; }
+    #build-ph { font-size: 0.58rem; color: #3a2510; letter-spacing: 0.5px; }
+
+    /* ── Minimap ── */
+    #mm-wrap {
+      position: absolute;
+      bottom: 24px; right: 24px;
+      pointer-events: auto;
+    }
+    #mm-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.55rem; letter-spacing: 3px;
+      color: #5a4020; text-align: center;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    #minimap {
+      display: block; cursor: pointer;
+      border-radius: 2px;
+      box-shadow:
+        0 0 0 1px rgba(200,146,42,0.28),
+        0 0 0 3px rgba(7,5,10,0.6),
+        0 4px 24px rgba(0,0,0,0.7);
+    }
+
+    /* ── Game Over / Victory overlay ── */
+    #gameover {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.72);
+      z-index: 200;
+    }
+    #gameover.go-hidden { display: none; }
+    #go-card {
+      background: rgba(7,5,10,0.97);
+      border: 1px solid rgba(200,146,42,0.35);
+      border-radius: 8px;
+      padding: 36px 44px;
+      text-align: center;
+      box-shadow: 0 12px 60px rgba(0,0,0,0.8);
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    #go-icon { font-size: 2.8rem; }
+    #go-title {
+      font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700;
+      color: #c8922a; letter-spacing: 6px;
+      text-shadow: 0 0 30px rgba(200,146,42,0.5);
+    }
+    #go-sub { font-size: 0.75rem; color: #5a3a18; letter-spacing: 2px; text-transform: uppercase; }
+    #go-reward { font-family:'Cinzel',serif; font-size:1.0rem; color:#80c870; letter-spacing:2px; min-height:1.2em; }
+    #go-btn {
+      margin-top: 12px;
+      padding: 10px 32px;
+      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 4px;
+      color: #c8922a;
+      background: rgba(200,146,42,0.14);
+      border: 1px solid rgba(200,146,42,0.45); border-radius: 4px;
+      cursor: pointer; text-transform: uppercase;
+      transition: background 0.15s;
+    }
+    #go-btn:hover { background: rgba(200,146,42,0.28); }
+
+    /* ── NPC Modal ── */
+    #npc-modal {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: auto;
+      z-index: 50;
+    }
+    #npc-modal.npc-hidden { display: none; }
+
+    #npc-modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.45);
+      cursor: default;
+    }
+    #npc-modal-card {
+      position: relative; z-index: 1;
+      background: rgba(10,7,14,0.96);
+      border: 1px solid rgba(200,146,42,0.35);
+      border-radius: 6px;
+      padding: 18px 22px;
+      min-width: 300px; max-width: 400px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(200,146,42,0.10);
+    }
+    #npc-modal-header {
+      display: flex; align-items: flex-start; gap: 12px;
+      margin-bottom: 12px; padding-bottom: 10px;
+      border-bottom: 1px solid rgba(200,146,42,0.12);
+    }
+    #npc-modal-avatar {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    #npc-modal-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.92rem; font-weight: 600;
+      color: #c8a050; letter-spacing: 1.5px;
+    }
+    #npc-modal-sub {
+      font-size: 0.60rem; color: #5a3a18;
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    #npc-modal-body {
+      font-size: 0.74rem; color: #7a6040;
+      line-height: 1.55; margin-bottom: 14px;
+    }
+    #npc-modal-actions {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .npc-trade-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 6px 12px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.28);
+      border-radius: 3px; cursor: pointer;
+      color: inherit; font-family: inherit;
+      transition: background 0.12s;
+    }
+    .npc-trade-btn:hover { background: rgba(200,146,42,0.22); }
+    .npc-t-give  { font-family:'Cinzel',serif; font-size:0.80rem; color:#c8a050; }
+    .npc-t-want  { font-family:'Cinzel',serif; font-size:0.80rem; color:#80c870; }
+    .npc-t-arrow { color:#4a3418; font-size:0.70rem; }
+    .npc-action-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 12px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.28);
+      border-radius: 3px; cursor: pointer;
+      color: inherit; font-family: inherit;
+      font-family:'Cinzel',serif; font-size:0.72rem; color:#c8a050; letter-spacing:0.8px;
+      transition: background 0.12s;
+    }
+    .npc-action-btn:hover { background: rgba(200,146,42,0.22); }
+    .npc-cost { font-size:0.65rem; color:#5a3a18; }
+    .npc-btn-dim { opacity: 0.35; cursor: default; }
+    .npc-decline-btn {
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px; cursor: pointer;
+      font-family:'Cinzel',serif; font-size:0.62rem;
+      color: #3a2c14; letter-spacing: 1px; text-transform: uppercase;
+      transition: background 0.12s;
+      align-self: flex-end;
+    }
+    .npc-decline-btn:hover { background: rgba(255,255,255,0.08); }
+
+    /* ── Toast notifications ── */
+    #toast-stack {
+      position: absolute;
+      top: 56px; right: 24px;
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .toast {
+      font-family: 'Cinzel', serif;
+      font-size: 0.68rem; letter-spacing: 1px;
+      color: #c8a050;
+      background: rgba(7,5,10,0.88);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 3px;
+      padding: 5px 12px;
+      opacity: 0;
+      transform: translateX(12px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+    .toast.toast-show { opacity: 1; transform: translateX(0); }
+    .toast.toast-warn { color: #e07030; border-color: rgba(224,112,48,0.35); }
   </style>
 </head>
 <body>
@@ -273,30 +508,57 @@
 
   <div id="topbar">
     <div id="game-title">EMPIRES</div>
+
+    <!-- Grouped resource bar -->
     <div id="res-bar">
-      <div class="res-chip"><span>⚜</span><span class="res-chip-val" id="res-gold">100</span></div>
-      <div class="res-chip"><span>🪵</span><span class="res-chip-val" id="res-wood">0</span></div>
-      <div class="res-chip"><span>🌾</span><span class="res-chip-val" id="res-crops">0</span></div>
-      <div class="res-chip"><span>🍞</span><span class="res-chip-val" id="res-food">20</span></div>
-      <div class="res-chip"><span>🪨</span><span class="res-chip-val" id="res-stone">0</span></div>
-      <div class="res-chip"><span>⚙</span><span class="res-chip-val" id="res-iron">0</span></div>
+      <!-- Economy -->
+      <div class="res-group">
+        <div class="res-chip"><span class="res-chip-icon">⚜</span><span class="res-chip-val" id="res-gold">100</span></div>
+        <div class="res-chip"><span class="res-chip-icon">🪵</span><span class="res-chip-val" id="res-wood">0</span></div>
+      </div>
+      <!-- Food chain -->
+      <div class="res-group" id="food-chip">
+        <div class="res-chip"><span class="res-chip-icon">🌾</span><span class="res-chip-val" id="res-crops">0</span></div>
+        <div class="res-chip"><span class="res-chip-icon">🍞</span><span class="res-chip-val" id="res-food">20</span></div>
+      </div>
+      <!-- Materials -->
+      <div class="res-group">
+        <div class="res-chip"><span class="res-chip-icon">🪨</span><span class="res-chip-val" id="res-stone">0</span></div>
+        <div class="res-chip"><span class="res-chip-icon">⚙</span><span class="res-chip-val" id="res-iron">0</span></div>
+      </div>
     </div>
-    <div id="hunger-wrap">
-      <span id="hunger-label">Hunger</span>
-      <div id="hunger-bar-outer"><div id="hunger-bar-inner"></div></div>
+
+    <div id="topbar-right">
+      <div id="hunger-wrap">
+        <span id="hunger-label">Hunger</span>
+        <div id="hunger-bar-outer"><div id="hunger-bar-inner"></div></div>
+      </div>
+      <div class="hud-pill" id="pop-display">0/20</div>
+      <div class="hud-pill" id="day-display">Day 1</div>
+      <div class="hud-pill" id="time-display">Morning</div>
     </div>
-    <div id="time-display">Morning</div>
   </div>
 
   <div id="hint">Roam freely &nbsp;·&nbsp; Find a good spot &nbsp;·&nbsp; <b>Settle</b> to found your kingdom</div>
 
   <button id="settle-btn">Settle Here</button>
 
+  <!-- Villager panel (bottom-left) -->
   <div id="villager-panel">
-    <div id="vp-name">—</div>
+    <div id="vp-header">
+      <div id="vp-dot"></div>
+      <div id="vp-name">—</div>
+    </div>
     <div id="vp-role">—</div>
-    <div id="vp-state">Status: <b id="vp-status">—</b></div>
-    <div id="vp-hunger" style="font-size:0.63rem;color:#5a3a14;margin-top:3px;">Hunger: <b id="vp-hunger-val">—</b></div>
+    <div id="vp-tier">Tier I</div>
+    <div id="vp-xp-wrap">
+      <div id="vp-xp-outer"><div id="vp-xp-bar"></div></div>
+      <span id="vp-xp-label">0 / 10 xp</span>
+    </div>
+    <div id="vp-body">
+      <div id="vp-state">Status: <b id="vp-status">—</b></div>
+      <div id="vp-hunger">Hunger: <b id="vp-hunger-val">—</b></div>
+    </div>
     <div id="vp-hint">Click tile to move · Esc deselect · F follow</div>
     <div id="vp-upgrade" style="display:none;">
       <div id="vp-upgrade-label">Train as</div>
@@ -305,18 +567,49 @@
     </div>
   </div>
 
+  <!-- Build panel (bottom-center) -->
   <div id="build-panel">
     <div id="build-panel-title">Build</div>
     <div id="build-btns"></div>
     <div id="build-ph">Click tile to place · Esc cancel</div>
   </div>
 
+  <!-- Minimap (bottom-right) -->
   <div id="mm-wrap">
     <div id="mm-label">World Map</div>
     <canvas id="minimap" width="168" height="168"></canvas>
   </div>
 
+  <!-- NPC Visitor Modal -->
+  <div id="npc-modal" class="npc-hidden">
+    <div id="npc-modal-backdrop" onclick="closeNPCModal(false)"></div>
+    <div id="npc-modal-card">
+      <div id="npc-modal-header">
+        <div id="npc-modal-avatar">👤</div>
+        <div>
+          <div id="npc-modal-name">—</div>
+          <div id="npc-modal-sub">—</div>
+        </div>
+      </div>
+      <div id="npc-modal-body"></div>
+      <div id="npc-modal-actions"></div>
+    </div>
+  </div>
 
+  <!-- Toast notifications -->
+  <div id="toast-stack"></div>
+
+</div>
+
+<!-- Game Over / Victory screen (outside HUD, full-screen) -->
+<div id="gameover" class="go-hidden">
+  <div id="go-card">
+    <div id="go-icon">⚜</div>
+    <div id="go-title">—</div>
+    <div id="go-sub">—</div>
+    <div id="go-reward"></div>
+    <button id="go-btn" onclick="SEED=Math.floor(Math.random()*1e6);init();">New Realm</button>
+  </div>
 </div>
 
 <script src="js/constants.js"></script>
@@ -325,6 +618,8 @@
 <script src="js/buildings.js"></script>
 <script src="js/villagers.js"></script>
 <script src="js/renderer.js"></script>
+<script src="js/npcs.js"></script>
+<script src="js/combat.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

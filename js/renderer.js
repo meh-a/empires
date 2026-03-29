@@ -165,6 +165,18 @@ function drawTreeObj(tree, sz) {
   drawSprite(STAMP.tree, STAMP_PAL.tree, Math.floor(bx + wobble), Math.floor(by), treeSz);
 }
 
+// ── Health bar helper ────────────────────────────────────────────
+function drawHealthBar(x, y, hp, maxHp, w) {
+  const pct = hp / maxHp;
+  const bh  = Math.max(2, w * 0.07);
+  const by  = y - bh - 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(Math.floor(x), Math.floor(by), Math.ceil(w), Math.ceil(bh));
+  const r = cl(220 - pct*100), g = cl(pct*210);
+  ctx.fillStyle = `rgb(${r},${g},20)`;
+  ctx.fillRect(Math.floor(x), Math.floor(by), Math.ceil(w*pct), Math.ceil(bh));
+}
+
 function drawBuildingObj(b, sz) {
   const sx = Math.floor(b.tx * sz - camX);
   const sy = Math.floor(b.ty * sz - camY);
@@ -188,6 +200,22 @@ function drawBuildingObj(b, sz) {
     ctx.fillRect(px2, py2, Math.floor(pw * b.progress), ph);
   } else {
     drawSprite(BSTAMP[b.type], BSTAMP_PAL[b.type], sx, sy, bsz);
+    // Warm window glow on occupied houses at night
+    if (b.type === 0 && getNightAlpha() > 0.1) {
+      const sleepers = villagers.filter(v => v.state === 'sleeping' && v.tx === b.tx && v.ty === b.ty).length;
+      if (sleepers > 0) {
+        const na = getNightAlpha();
+        const pulse = 0.55 + 0.12*Math.sin(time*1.8 + b.id);
+        const glow = na * pulse;
+        const gx = sx + bsz * 0.5, gy = sy + bsz * 0.62;
+        const grad = ctx.createRadialGradient(gx, gy, 1, gx, gy, bsz * 0.7);
+        grad.addColorStop(0, `rgba(255,210,80,${glow * 0.7})`);
+        grad.addColorStop(1, 'rgba(255,140,30,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(sx - bsz*0.2, sy, bsz*1.4, bsz*1.2);
+      }
+    }
+    if (b.hp < b.maxHp) drawHealthBar(sx, sy, b.hp, b.maxHp, bsz);
   }
 }
 
@@ -195,14 +223,38 @@ function drawTCSprite(tc, sz) {
   const sx = Math.floor(tc.tx * sz - camX);
   const sy = Math.floor(tc.ty * sz - camY);
   drawSprite(TC_STAMP, TC_PAL, sx, sy, sz);
+  if (tc.hp !== undefined && tc.hp < tc.maxHp) drawHealthBar(sx, sy, tc.hp, tc.maxHp, sz);
   if (sz >= 22) {
-    const ly = sy - Math.max(4, sz * 0.14);
+    const ly = sy - Math.max(4, sz * 0.14) - (tc.hp < tc.maxHp ? sz*0.10 : 0);
     ctx.font = `bold ${Math.max(8, Math.floor(sz * 0.13))}px 'Cinzel',serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)';
     ctx.strokeText('Town Center', sx + sz / 2, ly);
     ctx.fillStyle = '#c8922a';
     ctx.fillText('Town Center', sx + sz / 2, ly);
+  }
+}
+
+function drawEnemyTC(ek, sz) {
+  const sx = Math.floor(ek.tx * sz - camX);
+  const sy = Math.floor(ek.ty * sz - camY);
+  const fi = ek.ty * MAP_W + ek.tx;
+  if (!fogExplored[fi]) return; // hidden in fog
+  ctx.save();
+  drawSprite(TC_STAMP, TC_PAL, sx, sy, sz);
+  // Red tint overlay
+  ctx.fillStyle = 'rgba(160,20,20,0.42)';
+  ctx.fillRect(Math.floor(sx), Math.floor(sy), Math.ceil(sz), Math.ceil(sz));
+  ctx.restore();
+  if (ek.hp < ek.maxHp) drawHealthBar(sx, sy, ek.hp, ek.maxHp, sz);
+  if (sz >= 22) {
+    const ly = sy - Math.max(4, sz*0.14) - (ek.hp < ek.maxHp ? sz*0.10 : 0);
+    ctx.font = `bold ${Math.max(8, Math.floor(sz*0.13))}px 'Cinzel',serif`;
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,0.85)';
+    ctx.strokeText('Enemy Keep', sx+sz/2, ly);
+    ctx.fillStyle='#e06060';
+    ctx.fillText('Enemy Keep', sx+sz/2, ly);
   }
 }
 
@@ -264,8 +316,26 @@ function drawObjects() {
     objs.push({k:2, sortY: townCenter.ty + 1.0, d: townCenter});
   }
   for (const v of villagers) {
+    if (v.state === 'sleeping') continue; // hidden inside house
     if (v.x < c0-1 || v.x > c1+1 || v.y < r0-1 || v.y > r1+1) continue;
     objs.push({k:3, sortY: v.y, d: v});
+  }
+  for (const n of npcs) {
+    if (n.state==='raiding'||n.state==='gone'||n._despawn) continue;
+    if (n.x < c0-1 || n.x > c1+1 || n.y < r0-1 || n.y > r1+1) continue;
+    objs.push({k:4, sortY: n.y, d: n});
+  }
+  for (const eu of enemyUnits) {
+    if (eu._despawn) continue;
+    const fi = Math.floor(eu.y)*MAP_W + Math.floor(eu.x);
+    if (!fogExplored[fi]) continue;
+    if (eu.x < c0-1 || eu.x > c1+1 || eu.y < r0-1 || eu.y > r1+1) continue;
+    objs.push({k:5, sortY: eu.y, d: eu});
+  }
+  if (enemyKingdom && enemyKingdom.hp > 0) {
+    const fi = enemyKingdom.ty*MAP_W + enemyKingdom.tx;
+    if (fogExplored[fi] && enemyKingdom.tx>=c0 && enemyKingdom.tx<=c1 && enemyKingdom.ty>=r0 && enemyKingdom.ty<=r1)
+      objs.push({k:6, sortY: enemyKingdom.ty+1.0, d: enemyKingdom});
   }
 
   // ── Sort by Y ascending (objects higher on screen drawn first / behind) ──
@@ -276,7 +346,111 @@ function drawObjects() {
     if      (k===0) drawTreeObj(d, sz);
     else if (k===1) drawBuildingObj(d, sz);
     else if (k===2) drawTCSprite(d, sz);
-    else            drawVillagerChar(d, d.x*sz-camX, d.y*sz-camY, sz);
+    else if (k===3) drawVillagerChar(d, d.x*sz-camX, d.y*sz-camY, sz);
+    else if (k===4) drawNPCChar(d, d.x*sz-camX, d.y*sz-camY, sz);
+    else if (k===5) drawEnemyUnitChar(d, d.x*sz-camX, d.y*sz-camY, sz);
+    else            drawEnemyTC(d, sz);
+  }
+}
+
+function drawEnemyUnitChar(eu, px, py, sz) {
+  const moving = eu.path.length > 0;
+  const frame  = (moving && Math.floor(time*5+eu.id*0.83)%2===1) ? 1 : 0;
+  const sprSz  = Math.max(6, sz*1.15);
+  const sprX   = px - sprSz*0.5;
+  const sprY   = py - sprSz*0.88;
+
+  if (sprSz < 8) {
+    ctx.fillStyle = '#c02020';
+    ctx.fillRect(Math.floor(sprX), Math.floor(sprY), Math.ceil(sprSz), Math.ceil(sprSz));
+    return;
+  }
+
+  // Shadow
+  const shW = Math.ceil(sprSz*0.55);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(Math.floor(px-shW*0.5), Math.floor(py+sprSz*0.10), shW, Math.ceil(sprSz*0.10));
+
+  const sprite = eu.role==='archer' ? VSPRITE.Archer[frame] : VSPRITE.Knight[frame];
+  const pal    = eu.role==='archer' ? ENEMY_ARC_PAL          : ENEMY_INF_PAL;
+  drawSprite(sprite, pal, sprX, sprY, sprSz);
+
+  // Enemy infantry sword swing
+  if (eu.role !== 'archer' && eu.attackAnim > 0) {
+    const a = eu.attackAnim;
+    const cx2 = px, cy2 = py - sprSz * 0.35;
+    const bladeLen = sz * 0.52;
+    const swing = (1 - a) * Math.PI * 0.85 - Math.PI * 0.1;
+    ctx.save();
+    ctx.translate(cx2, cy2);
+    ctx.rotate(swing);
+    ctx.beginPath();
+    ctx.arc(0, 0, bladeLen * 0.6, -Math.PI * 0.1, (1-a) * Math.PI * 0.85, false);
+    ctx.strokeStyle = `rgba(255,120,120,${a * 0.35})`;
+    ctx.lineWidth = Math.max(1, sz * 0.045);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(bladeLen, 0);
+    ctx.strokeStyle = '#e08080';
+    ctx.lineWidth = Math.max(1, sz * 0.04);
+    ctx.stroke();
+    if (a > 0.6) {
+      ctx.beginPath();
+      ctx.arc(bladeLen, 0, Math.max(1.5, sz * 0.055), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,180,180,${(a-0.6)*2.5})`;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (eu.hp < eu.maxHp) drawHealthBar(sprX, sprY, eu.hp, eu.maxHp, sprSz);
+}
+
+function drawNPCChar(npc, px, py, sz) {
+  const moving = npc.path.length > 0;
+  const frame  = (moving && Math.floor(time*5+npc.id*0.7)%2===1) ? 1 : 0;
+  const sprSz  = Math.max(6, sz*1.15);
+  const sprX   = px - sprSz*0.5;
+  const sprY   = py - sprSz*0.88;
+
+  if (sprSz < 8) {
+    ctx.fillStyle = npc.type==='trader' ? '#c07820' : '#c84040';
+    ctx.fillRect(Math.floor(sprX), Math.floor(sprY), Math.ceil(sprSz), Math.ceil(sprSz));
+    return;
+  }
+
+  // Shadow
+  const shW = Math.ceil(sprSz*0.55);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(Math.floor(px-shW*0.5), Math.floor(py+sprSz*0.10), shW, Math.ceil(sprSz*0.10));
+
+  // Arrived indicator — small pulsing dot above head
+  if (npc.state==='arrived') {
+    const pulse = 0.55 + 0.45*Math.sin(time*4);
+    const dotR  = Math.max(2, sz*0.09);
+    ctx.fillStyle = npc.type==='trader' ? `rgba(200,180,40,${pulse})` : `rgba(220,80,80,${pulse})`;
+    ctx.beginPath();
+    ctx.arc(Math.floor(px), Math.floor(sprY - dotR*1.5), dotR, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  if (npc.type==='trader') {
+    drawSprite(VSPRITE.Basic[frame], NPC_TRADER_PAL, sprX, sprY, sprSz);
+  } else {
+    drawSprite(VSPRITE.Knight[frame], NPC_WKNIGHT_PAL, sprX, sprY, sprSz);
+  }
+
+  // Name at high zoom
+  if (sz >= 42) {
+    const ny = Math.floor(sprY + sprSz + 3);
+    const label = npc.type==='trader' ? `⚜ ${npc.name}` : `⚔ ${npc.name}`;
+    ctx.font = `bold ${Math.max(9,sz*0.12)}px 'Cinzel',serif`;
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,0.80)';
+    ctx.strokeText(label, px, ny);
+    ctx.fillStyle = npc.type==='trader' ? 'rgba(220,190,80,0.95)' : 'rgba(220,100,100,0.95)';
+    ctx.fillText(label, px, ny);
   }
 }
 
@@ -326,6 +500,52 @@ function drawVillagerChar(v, px, py, sz) {
   const sprites = VSPRITE[v.role] || VSPRITE.Basic;
   const pal     = VPAL[v.role]    || VPAL.Basic;
   drawSprite(sprites[frame], pal, sprX, sprY, sprSz);
+
+  // Knight/Archer sword/bow attack animation
+  if ((v.role === VROLE.KNIGHT || v.role === VROLE.ARCHER) && v.attackAnim > 0) {
+    const a = v.attackAnim; // 1→0
+    const cx2 = px, cy2 = py - sprSz * 0.35;
+    // tier-based blade color and length
+    const tierProps = [
+      { col: '#c8c8c8', len: 0.55 },
+      { col: '#e0e8f0', len: 0.65 },
+      { col: '#a0d8ff', len: 0.80 },
+    ];
+    const tp = tierProps[Math.min(2, (v.tier||1)-1)];
+    // tool tier controls blade width
+    const toolW = [1.0, 1.35, 1.75][(v.toolTier||0)];
+    const bladeLen = sz * tp.len;
+    const swing = (1 - a) * Math.PI * 0.9 - Math.PI * 0.1;
+    ctx.save();
+    ctx.translate(cx2, cy2);
+    ctx.rotate(swing);
+    // sweep arc
+    ctx.beginPath();
+    ctx.arc(0, 0, bladeLen * 0.6, -Math.PI * 0.1, (1-a) * Math.PI * 0.9, false);
+    ctx.strokeStyle = `rgba(220,220,255,${a * 0.35})`;
+    ctx.lineWidth = Math.max(1, sz * 0.05 * toolW);
+    ctx.stroke();
+    // blade line
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(bladeLen, 0);
+    ctx.strokeStyle = tp.col;
+    ctx.lineWidth = Math.max(1, sz * 0.045 * toolW);
+    ctx.stroke();
+    // tip flash
+    if (a > 0.6) {
+      ctx.beginPath();
+      ctx.arc(bladeLen, 0, Math.max(1.5, sz * 0.06 * toolW), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,200,${(a-0.6)*2.5})`;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Health bar when damaged
+  if (v.hp !== undefined && v.hp < v.maxHp) {
+    drawHealthBar(sprX, sprY, v.hp, v.maxHp, sprSz);
+  }
 
   // Name label (high zoom only)
   if (sz >= 42) {
@@ -490,6 +710,7 @@ function render() {
 
   drawNightOverlay();
   drawObjects();
+  drawProjectiles();
 
   // Placement preview
   if (placingTownCenter) {
@@ -533,6 +754,54 @@ function render() {
     ctx.fillRect(hsx,hsy+hsh-bww,hsw,bww);
     ctx.fillRect(hsx,hsy,bww,hsh);
     ctx.fillRect(hsx+hsw-bww,hsy,bww,hsh);
+  }
+
+  // Projectiles (arrows / slashes)
+  function drawProjectiles() {
+    if (!projectiles.length) return;
+    const sz = TILE_SZ * zoom;
+    ctx.save();
+    for (const p of projectiles) {
+      const px = p.x * sz - camX;
+      const py = p.y * sz - camY;
+      if (p.type === 'arrow') {
+        // Draw a thin line in flight direction
+        const len = Math.max(4, sz*0.4);
+        const ex  = px - p.vx * len;
+        const ey  = py - p.vy * len;
+        ctx.strokeStyle = 'rgba(160,120,60,0.85)';
+        ctx.lineWidth   = Math.max(1, sz*0.04);
+        ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(px, py); ctx.stroke();
+        // Tip dot
+        ctx.fillStyle = 'rgba(200,160,60,0.9)';
+        ctx.fillRect(Math.floor(px-1), Math.floor(py-1), 2, 2);
+      } else {
+        // Slash: bright cross flash
+        const r = Math.max(2, sz*0.14);
+        ctx.fillStyle = 'rgba(255,220,60,0.75)';
+        ctx.fillRect(Math.floor(px-r), Math.floor(py-1), r*2, 2);
+        ctx.fillRect(Math.floor(px-1), Math.floor(py-r), 2, r*2);
+      }
+    }
+    ctx.restore();
+  }
+
+  // Territory boundary ring
+  if (settled && townCenter) {
+    const sz2 = TILE_SZ * zoom;
+    const tr = getTerritoryRadius() * sz2;
+    const tcsx = (townCenter.tx + 0.5) * sz2 - camX;
+    const tcsy = (townCenter.ty + 0.5) * sz2 - camY;
+    ctx.save();
+    ctx.setLineDash([6, 10]);
+    ctx.lineDashOffset = -(time * 12) % 16;
+    ctx.strokeStyle = 'rgba(200,146,42,0.20)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(tcsx, tcsy, tr, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
   // Vignette

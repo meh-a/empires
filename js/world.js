@@ -198,7 +198,7 @@ class MinHeap {
   get size() { return this.h.length; }
 }
 
-function findPath(sx, sy, ex, ey) {
+function findPath(sx, sy, ex, ey, blocked) {
   if (sx===ex && sy===ey) return [{x:sx,y:sy}];
   if (!WALKABLE_TILES.has(mapTiles[ey]?.[ex])) return null;
 
@@ -206,6 +206,7 @@ function findPath(sx, sy, ex, ey) {
   const gScore = new Float32Array(MAP_W * MAP_H).fill(Infinity);
   const parent  = new Int32Array(MAP_W * MAP_H).fill(-1);
   const startIdx = sy*W + sx;
+  const endIdx   = ey*W + ex;
   gScore[startIdx] = 0;
 
   const heap = new MinHeap();
@@ -225,6 +226,7 @@ function findPath(sx, sy, ex, ey) {
       if (nx<0||nx>=MAP_W||ny<0||ny>=MAP_H) continue;
       if (!WALKABLE_TILES.has(mapTiles[ny][nx])) continue;
       const ni = ny*W+nx;
+      if (blocked && blocked[ni] && ni !== endIdx) continue;
       const ng = gScore[idx] + 1;
       if (ng < gScore[ni]) {
         gScore[ni] = ng; parent[ni] = idx;

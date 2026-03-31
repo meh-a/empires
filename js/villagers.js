@@ -4,10 +4,6 @@
 //  VILLAGERS
 // ═══════════════════════════════════════════════════
 
-// Possession state — declared here so path-following can reference it safely
-// even if no separate possession system is loaded yet.
-if (typeof possessedVillager === 'undefined') var possessedVillager = null;
-if (typeof POSSESS_SPEED    === 'undefined') var POSSESS_SPEED    = 5.0;
 
 function mkVillager(role, tx, ty) {
   const maxHp = UNIT_HP_MAX[role] || 15;

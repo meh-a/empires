@@ -449,6 +449,8 @@ canvas.addEventListener('touchmove', e => {
       const ty = Math.floor((t.clientY + camY) / sz);
       placeBuilding(tx, ty, 8);
     } else {
+      cameraFollow = false;
+      camTargetX = null; camTargetY = null;
       camX -= dx; camY -= dy;
       clamp();
     }
@@ -470,7 +472,13 @@ canvas.addEventListener('touchend', e => {
   e.preventDefault();
   clearTimeout(_longPressTimer); _longPressTimer = null;
   if (!_touchMoved && _touch1) handleCanvasClick(_touch1.x, _touch1.y);
-  if (e.touches.length === 0) { _touch1 = null; _touch2 = null; }
+  if (e.touches.length === 0) {
+    _touch1 = null; _touch2 = null;
+  } else if (e.touches.length === 1) {
+    // Re-anchor so the next touchmove delta is computed from the correct position
+    _touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    _touch2 = null;
+  }
 }, { passive: false });
 // D-pad wiring: set keys[] so possessed knight movement works
 ;(function wireDpad() {

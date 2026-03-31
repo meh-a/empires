@@ -325,16 +325,7 @@ addEventListener('mousemove', e=>{
 
 canvas.addEventListener('contextmenu', e=>e.preventDefault());
 
-canvas.addEventListener('wheel', e=>{
-  e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 0.9;
-  const wxBefore = (e.clientX + camX) / (TILE_SZ * zoom);
-  const wyBefore = (e.clientY + camY) / (TILE_SZ * zoom);
-  zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * factor));
-  camX = wxBefore * TILE_SZ * zoom - e.clientX;
-  camY = wyBefore * TILE_SZ * zoom - e.clientY;
-  clamp();
-},{passive:false});
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); },{passive:false});
 
 // Minimap click → smooth pan camera
 mmCanvas.addEventListener('click', e=>{
@@ -464,19 +455,12 @@ canvas.addEventListener('touchmove', e => {
     _touch1.x = t.clientX; _touch1.y = t.clientY;
   } else if (e.touches.length === 2 && _touch1 && _touch2) {
     const a = e.touches[0], b = e.touches[1];
-    const prevDist = Math.hypot(_touch2.x - _touch1.x, _touch2.y - _touch1.y);
-    const newDist  = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-    if (prevDist > 0) {
-      const midX = (a.clientX + b.clientX) / 2;
-      const midY = (a.clientY + b.clientY) / 2;
-      const factor = newDist / prevDist;
-      const wxBefore = (midX + camX) / (TILE_SZ * zoom);
-      const wyBefore = (midY + camY) / (TILE_SZ * zoom);
-      zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * factor));
-      camX = wxBefore * TILE_SZ * zoom - midX;
-      camY = wyBefore * TILE_SZ * zoom - midY;
-      clamp();
-    }
+    const midX = (a.clientX + b.clientX) / 2;
+    const midY = (a.clientY + b.clientY) / 2;
+    const prevMidX = (_touch1.x + _touch2.x) / 2;
+    const prevMidY = (_touch1.y + _touch2.y) / 2;
+    camX -= midX - prevMidX; camY -= midY - prevMidY;
+    clamp();
     _touch1.x = a.clientX; _touch1.y = a.clientY;
     _touch2.x = b.clientX; _touch2.y = b.clientY;
   }

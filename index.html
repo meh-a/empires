@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Empires — Phase I: The Realm</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -20,6 +20,7 @@
       position: fixed; top:0; left:0;
       display: block;
       cursor: crosshair;
+      touch-action: none;
     }
     #gameCanvas.panning { cursor: grabbing; }
 
@@ -310,6 +311,63 @@
     .build-btn-name { font-size: 0.58rem; color: #c09060; letter-spacing: 0px; white-space: nowrap; }
     .build-btn-cost { font-size: 0.56rem; color: #a08040; letter-spacing: 0px; white-space: nowrap; }
     #build-ph { font-size: 0.62rem; color: #a08848; letter-spacing: 0.5px; }
+    #build-panel-header { display: flex; align-items: center; gap: 10px; }
+    #build-close-btn {
+      background: none; border: none; color: #c8922a; font-family: inherit;
+      font-size: 0.85rem; cursor: pointer; padding: 0 2px; line-height: 1;
+      pointer-events: auto;
+    }
+    #build-close-btn:hover { color: #e8b050; }
+
+    /* ── Mobile: build toggle button (above minimap) ── */
+    #build-toggle-btn {
+      position: absolute;
+      bottom: 204px; right: 24px;
+      background: rgba(200,146,42,0.14);
+      border: 1px solid rgba(200,146,42,0.38);
+      border-radius: 4px;
+      padding: 9px 16px;
+      color: #c8922a;
+      font-family: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: background 0.12s;
+    }
+    #build-toggle-btn:active { background: rgba(200,146,42,0.30); }
+    #build-toggle-btn.hidden { display: none; }
+
+    /* ── Virtual d-pad (possession mode) ── */
+    #dpad {
+      position: absolute;
+      bottom: 260px; left: 24px;
+      display: grid;
+      grid-template-areas: ". up ." "left . right" ". down .";
+      grid-template-columns: 48px 48px 48px;
+      grid-template-rows: 48px 48px 48px;
+      gap: 4px;
+      pointer-events: auto;
+    }
+    #dpad.hidden { display: none; }
+    #dp-up    { grid-area: up; }
+    #dp-left  { grid-area: left; }
+    #dp-right { grid-area: right; }
+    #dp-down  { grid-area: down; }
+    .dp-btn {
+      background: rgba(200,146,42,0.12);
+      border: 1px solid rgba(200,146,42,0.30);
+      border-radius: 4px;
+      color: #c8a050;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      user-select: none;
+      transition: background 0.08s;
+    }
+    .dp-btn:active { background: rgba(200,146,42,0.35); }
 
     /* ── Minimap ── */
     #mm-wrap {
@@ -589,9 +647,23 @@
 
   <!-- Build panel (bottom-center) -->
   <div id="build-panel">
-    <div id="build-panel-title">Build</div>
+    <div id="build-panel-header">
+      <div id="build-panel-title">Build</div>
+      <button id="build-close-btn" onclick="toggleBuildPanel()">✕</button>
+    </div>
     <div id="build-btns"></div>
-    <div id="build-ph">Click tile to place · Esc cancel</div>
+    <div id="build-ph">Tap tile to place</div>
+  </div>
+
+  <!-- Mobile: build toggle button (above minimap, hidden until settled) -->
+  <button id="build-toggle-btn" class="hidden" onclick="toggleBuildPanel()">Build</button>
+
+  <!-- Virtual d-pad (shown during knight possession) -->
+  <div id="dpad" class="hidden">
+    <button class="dp-btn" id="dp-up">▲</button>
+    <button class="dp-btn" id="dp-left">◀</button>
+    <button class="dp-btn" id="dp-right">▶</button>
+    <button class="dp-btn" id="dp-down">▼</button>
   </div>
 
   <!-- Minimap (bottom-right) -->
@@ -642,8 +714,10 @@
 <script src="js/sprites.js"></script>
 <script src="js/world.js"></script>
 <script src="js/buildings.js"></script>
-<script src="js/villagers.js"></script>
-<script src="js/renderer.js"></script>
+<script src="js/villager-targets.js"></script>
+<script src="js/villager-ai.js"></script>
+<script src="js/renderer-world.js"></script>
+<script src="js/renderer-units.js"></script>
 <script src="js/npcs.js"></script>
 <script src="js/combat.js"></script>
 <script src="js/game.js"></script>

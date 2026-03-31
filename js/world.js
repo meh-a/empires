@@ -245,7 +245,7 @@ class MinHeap {
 }
 
 // Pre-allocated pathfinding buffers — avoids 128KB GC pressure per call
-const _pfGScore = new Float32Array(MAP_W * MAP_H);
+const _pfGScore = new Float32Array(MAP_W * MAP_H).fill(Infinity);
 const _pfParent = new Int32Array(MAP_W * MAP_H);
 const _pfDirty  = [];  // indices written this call, for fast reset
 

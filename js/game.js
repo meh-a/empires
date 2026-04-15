@@ -620,6 +620,10 @@ async function init() {
   loading.style.opacity='1';
   loading.style.pointerEvents='all';
   loading.style.display='flex';
+  const hasSave = loadGame();
+  document.getElementById('loading-sub').textContent = hasSave 
+    ? `Loading realm #${SEED}…` 
+    : `Forging realm #${SEED}…`;
   // Build panel (idempotent — only populate buttons once)
   if (!document.querySelector('.build-btn')) {
     const btns = document.getElementById('build-btns');
@@ -652,6 +656,20 @@ async function init() {
   bar.style.width='10%';
 
   await generate(SEED, pct => { bar.style.width = pct.toFixed(0) + '%'; });
+   if (_savedVillagers) {
+    villagers = _savedVillagers; // Reconstruct fully as needed
+    _savedVillagers = null;
+  }
+  if (_savedBuildings) {
+    buildings = _savedBuildings;
+    _savedBuildings = null;
+  }
+  
+  if (!hasSave) {
+    spawnVillagers();
+  }
+  
+  startAutoSave();
   bar.style.width='80%';
 
   await new Promise(r => requestAnimationFrame(r));

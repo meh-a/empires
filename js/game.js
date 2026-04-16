@@ -645,7 +645,7 @@ async function init() {
     document.getElementById('settle-btn')._wired=true;
   }
 
-  document.getElementById('loading-sub').textContent=`Forging realm #${SEED}…`;
+  document.getElementById('loading-sub').textContent=`thanks bailey #${SEED}…`;
   bar.style.width='0%';
 
   await new Promise(r => requestAnimationFrame(r));

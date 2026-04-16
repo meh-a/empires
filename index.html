@@ -655,11 +655,6 @@
     <div id="build-ph">Tap tile to place</div>
   </div>
 
-  <div id="save-btns" style="position:absolute;top:80px;right:24px;display:flex;gap:6px;pointer-events:auto;">
-  <button onclick="saveGame()" style="padding:5px 12px;font-size:0.65rem;background:rgba(200,146,42,0.15);border:1px solid rgba(200,146,42,0.40);color:#c8a050;border-radius:3px;cursor:pointer;">💾 Save</button>
-  <button onclick="location.reload()" style="padding:5px 12px;font-size:0.65rem;background:rgba(200,146,42,0.15);border:1px solid rgba(200,146,42,0.40);color:#c8a050;border-radius:3px;cursor:pointer;">📂 Load</button>
-</div>
-
   <!-- Mobile: build toggle button (above minimap, hidden until settled) -->
   <button id="build-toggle-btn" class="hidden" onclick="toggleBuildPanel()">Build</button>
 
@@ -725,7 +720,6 @@
 <script src="js/renderer-units.js"></script>
 <script src="js/npcs.js"></script>
 <script src="js/combat.js"></script>
-<script src="js/persistence.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

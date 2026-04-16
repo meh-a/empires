@@ -204,7 +204,7 @@ let _bid = 0;
 
 // ── Villager state ────────────────────────────────────
 const V_NAMES = ['Aldric','Bram','Celt','Dorset','Erwin','Finn',
-                 'Gord','Holt','Ivan','Jorn','Kern','Lothar','Mord','Neth','Oswin'];
+                 'Gord','Holt','Ivan','Jorn','Kern','Lothar','Mord','Neth','Oswin','Caleb','Bodhi','Alec'];
 let _usedNames = new Set();
 
 let villagers = [];

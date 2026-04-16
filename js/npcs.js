@@ -32,7 +32,7 @@ const NPC_NAMES_TRADER = [
   'Oswald','Serra','Tomas','Finn','Devin','Rowan','Elspeth','Garold',
 ];
 const NPC_NAMES_KNIGHT = [
-  'Sir Gareth','Lord Vance','The Iron Rider','Sir Brom','Captain Holt','Sir Edric',
+  'Sir Gareth','Lord Vance','The Iron Rider','Sir Brom','Captain Holt','Sir Edric', 'Sir Antares'
 ];
 
 const TRADE_POOL = [

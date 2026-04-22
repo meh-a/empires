@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="../">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Empires — Singleplayer</title>
+  <link rel="icon" href="data:,">
+  <script type="importmap">
+  {
+    "imports": {
+      "/server/game/accounts.js": "/singleplayer/accounts-stub.js"
+    }
+  }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      overflow: hidden;
+      background: #07050a;
+      font-family: 'Silkscreen', monospace;
+      color: #e8d5a0;
+      user-select: none;
+    }
+
+    #gameCanvas {
+      position: fixed; top:0; left:0;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    #gameCanvas.panning { cursor: grabbing; }
+
+    /* ── Loading ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: #07050a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px; z-index: 1000;
+      transition: opacity 0.7s ease;
+    }
+    #loading-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 700;
+      color: #c8922a;
+      letter-spacing: 14px;
+      text-shadow:
+        0 0 60px rgba(200,146,42,0.55),
+        0 0 20px rgba(200,146,42,0.35),
+        0 2px 4px rgba(0,0,0,0.8);
+    }
+    #loading-sub {
+      font-size: 0.8rem;
+      letter-spacing: 5px;
+      color: #7a5820;
+      text-transform: uppercase;
+    }
+    #loading-bar-wrap {
+      width: 260px; height: 2px;
+      background: rgba(200,146,42,0.12);
+    }
+    #loading-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, #a06018, #e8b040);
+      width: 0%;
+      transition: width 0.25s ease;
+      box-shadow: 0 0 10px rgba(200,146,42,0.7);
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed; inset: 0;
+      pointer-events: none;
+    }
+
+    /* ── Topbar ── */
+    #topbar {
+      position: absolute; top:0; left:0; right:0;
+      padding: 8px 16px;
+      background: linear-gradient(to bottom, rgba(7,5,10,0.88) 0%, transparent 100%);
+      display: flex; align-items: center; gap: 12px;
+      pointer-events: none;
+    }
+    #game-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.05rem; font-weight: 700;
+      color: #c8922a; letter-spacing: 5px;
+      text-shadow: 0 0 18px rgba(200,146,42,0.45);
+      flex-shrink: 0;
+    }
+
+    /* Resource groups */
+    #res-bar {
+      display: flex; align-items: center; gap: 0;
+      margin-left: 10px;
+      background: rgba(7,5,10,0.55);
+      border: 1px solid rgba(200,146,42,0.12);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .res-group {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px;
+    }
+    .res-group + .res-group {
+      border-left: 1px solid rgba(200,146,42,0.12);
+    }
+    .res-chip {
+      font-size: 0.70rem; letter-spacing: 0px;
+      color: #c8a050;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .res-chip-val { font-weight: 600; min-width: 22px; text-align: right; }
+    .res-chip-icon { font-size: 0.85rem; line-height: 1; }
+
+    /* Food-low pulse */
+    @keyframes pulse-low {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.45; }
+    }
+    .res-low .res-chip-val { color: #e05030; animation: pulse-low 1.2s ease infinite; }
+
+    /* Right side of topbar */
+    #topbar-right {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .hud-pill {
+      font-size: 0.60rem; letter-spacing: 1px;
+      color: #b09050; text-transform: uppercase;
+      background: rgba(7,5,10,0.55);
+      border: 1px solid rgba(200,146,42,0.10);
+      border-radius: 3px;
+      padding: 3px 8px;
+    }
+    #go-offline-btn, #topbar-account-btn {
+      font-family: 'Silkscreen', monospace; font-size: 0.52rem;
+      letter-spacing: 1px; text-transform: uppercase;
+      border-radius: 3px; padding: 3px 9px; cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      pointer-events: auto;
+    }
+    #go-offline-btn {
+      color: #7a9860; background: rgba(60,120,40,0.10);
+      border: 1px solid rgba(80,160,50,0.28);
+    }
+    #go-offline-btn:hover { background: rgba(60,120,40,0.22); color: #a0c878; border-color: rgba(80,160,50,0.55); }
+    #go-offline-btn.going { color: #60a040; border-color: rgba(80,160,50,0.6); cursor: default; }
+    #topbar-account-btn {
+      color: #c8922a; background: rgba(200,146,42,0.08);
+      border: 1px solid rgba(200,146,42,0.28);
+    }
+    #topbar-account-btn:hover { background: rgba(200,146,42,0.18); color: #e8c060; }
+
+    /* ── Chat ── */
+    #chat-wrap {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      width: 360px; z-index: 400; pointer-events: none;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    #chat-log {
+      max-height: 160px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 6px 8px; margin-bottom: 4px;
+      background: rgba(4,3,7,0.55);
+      border-radius: 4px 4px 0 0;
+      border: 1px solid rgba(200,146,42,0.10);
+      border-bottom: none;
+      pointer-events: auto;
+    }
+    #chat-log:empty { display: none; }
+    .chat-msg {
+      font-family: 'Silkscreen', monospace; font-size: 0.58rem;
+      line-height: 1.5; color: #c8b888; word-break: break-word;
+    }
+    .chat-msg .chat-name { color: #e8c060; }
+    .chat-msg.chat-sys { color: #6a9060; font-style: italic; }
+    #chat-input-row {
+      display: none; pointer-events: auto;
+      background: rgba(4,3,7,0.85);
+      border: 1px solid rgba(200,146,42,0.35);
+      border-radius: 0 0 4px 4px;
+      padding: 5px 8px; gap: 6px;
+      align-items: center;
+    }
+    #chat-input-row.open { display: flex; }
+    #chat-input {
+      flex: 1; background: none; border: none; outline: none;
+      font-family: 'Silkscreen', monospace; font-size: 0.62rem;
+      color: #f0e0a0; caret-color: #e8c060;
+    }
+    #chat-hint {
+      font-family: 'Silkscreen', monospace; font-size: 0.50rem;
+      color: #5a4820; white-space: nowrap;
+    }
+
+    #topbar-leaderboard-btn {
+      font-family: 'Silkscreen', monospace; font-size: 0.52rem;
+      letter-spacing: 1px; text-transform: uppercase;
+      border-radius: 3px; padding: 3px 9px; cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      color: #6ab0d0; background: rgba(42,120,180,0.08);
+      border: 1px solid rgba(42,120,180,0.28);
+    }
+    #topbar-leaderboard-btn:hover { background: rgba(42,120,180,0.18); color: #90d0f0; }
+
+    /* ── Leaderboard modal ── */
+    #leaderboard-modal {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(4,3,7,0.82);
+      z-index: 700;
+      backdrop-filter: blur(3px);
+    }
+    #leaderboard-modal.hidden { display: none; }
+    #leaderboard-card {
+      background: linear-gradient(170deg, rgba(6,14,22,0.98) 0%, rgba(3,8,12,0.99) 100%);
+      border: 1px solid rgba(42,120,180,0.30);
+      border-radius: 10px; padding: 32px 40px 28px;
+      box-shadow: 0 0 80px rgba(42,120,180,0.07), 0 32px 96px rgba(0,0,0,0.85);
+      min-width: 320px; max-width: 400px; width: 90%;
+      position: relative;
+      animation: card-in 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    #leaderboard-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: #1a4060;
+      font-family: 'Silkscreen', monospace; font-size: 0.7rem;
+      cursor: pointer; letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    #leaderboard-close:hover { color: #c06030; }
+    #leaderboard-title {
+      font-family: 'Silkscreen', monospace; font-size: 0.85rem;
+      letter-spacing: 3px; color: #6ab0d0;
+      text-align: center; margin-bottom: 20px;
+    }
+    #leaderboard-list {
+      list-style: none; padding: 0; margin: 0;
+    }
+    #leaderboard-list li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(42,120,180,0.10);
+      font-family: 'Silkscreen', monospace; font-size: 0.62rem;
+      color: #a0c8e0;
+    }
+    #leaderboard-list li:last-child { border-bottom: none; }
+    .lb-rank { width: 22px; text-align: right; color: #3a7090; }
+    .lb-rank.lb-top { color: #e8c060; }
+    .lb-name { flex: 1; }
+    .lb-score { color: #e8c060; }
+    #leaderboard-empty {
+      text-align: center; color: #3a5060;
+      font-family: 'Silkscreen', monospace; font-size: 0.62rem;
+      padding: 20px 0;
+    }
+
+    /* ── Account modal popup ── */
+    #account-modal {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(4,3,7,0.82);
+      z-index: 700;
+      backdrop-filter: blur(3px);
+    }
+    #account-modal.hidden { display: none; }
+    #account-modal-card {
+      background: linear-gradient(170deg, rgba(22,14,6,0.98) 0%, rgba(12,8,3,0.99) 100%);
+      border: 1px solid rgba(200,146,42,0.30);
+      border-radius: 10px; padding: 32px 40px 28px;
+      box-shadow: 0 0 80px rgba(200,146,42,0.07), 0 32px 96px rgba(0,0,0,0.85);
+      min-width: 320px; max-width: 400px; width: 90%;
+      position: relative;
+      animation: card-in 0.3s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    #account-modal-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: #5a3e14;
+      font-family: 'Silkscreen', monospace; font-size: 0.7rem;
+      cursor: pointer; letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+    #account-modal-close:hover { color: #c06030; }
+    #account-modal-title {
+      font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700;
+      color: #c8922a; letter-spacing: 5px; text-align: center;
+      margin-bottom: 20px;
+    }
+    #account-panel {
+      font-size: 0.68rem; color: #a08860;
+    }
+    #hunger-wrap {
+      display: flex; align-items: center; gap: 6px;
+    }
+    #hunger-label {
+      font-size: 0.60rem; letter-spacing: 1px;
+      color: #a08848; text-transform: uppercase;
+    }
+    #hunger-bar-outer {
+      width: 64px; height: 4px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.18);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #hunger-bar-inner {
+      height: 100%;
+      width: 100%;
+      background: #60c040;
+      transition: width 0.6s, background 0.6s;
+    }
+
+    /* ── Controls hint ── */
+    #hint {
+      position: absolute;
+      top: 48px; left: 50%; transform: translateX(-50%);
+      background: rgba(7,5,10,0.82);
+      border: 1px solid rgba(200,146,42,0.18);
+      border-radius: 4px;
+      padding: 5px 16px;
+      font-size: 0.62rem; color: #b09060;
+      letter-spacing: 0.5px; white-space: nowrap;
+      transition: opacity 1.2s ease;
+    }
+    #hint.hidden { opacity: 0; pointer-events: none; }
+    #hint b { color: #e0b060; }
+
+    /* ── Settle button ── */
+    #settle-btn {
+      position: absolute;
+      bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: rgba(200,146,42,0.16);
+      border: 1px solid rgba(200,146,42,0.45);
+      border-radius: 4px;
+      padding: 9px 28px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem; letter-spacing: 4px;
+      color: #c8922a;
+      cursor: pointer; pointer-events: auto;
+      text-transform: uppercase;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    #settle-btn:hover { background: rgba(200,146,42,0.28); border-color: rgba(200,146,42,0.70); }
+    #settle-btn.placing { background: rgba(80,200,80,0.13); border-color: rgba(80,200,80,0.5); color: #70d890; }
+    #settle-btn.hidden  { display: none; }
+
+    /* ── Building Panel (bottom-left) ── */
+    #bldg-panel {
+      position: absolute;
+      bottom: 24px; left: 24px;
+      background: rgba(7,5,10,0.90);
+      border: 1px solid rgba(200,146,42,0.28);
+      border-radius: 5px;
+      padding: 10px 14px;
+      min-width: 220px;
+      display: none;
+      pointer-events: auto;
+      z-index: 30;
+      color: #e8d8a8;
+      font-size: 0.72rem;
+    }
+    #bldg-panel.visible { display: block; }
+    #bldg-panel-header {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 6px;
+    }
+    #bldg-panel-name { font-size: 0.82rem; font-weight: 700; color: #f5d080; flex: 1; }
+    #bldg-panel-tier-badge {
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;
+      background: rgba(200,146,42,0.18); border: 1px solid rgba(200,146,42,0.3);
+      border-radius: 3px; padding: 1px 5px; color: #c8922a;
+    }
+    #bldg-panel-close {
+      background: none; border: none; color: #a08060; cursor: pointer;
+      font-size: 0.75rem; padding: 0 2px; line-height: 1;
+    }
+    #bldg-panel-effect { color: #b8a888; margin-bottom: 8px; line-height: 1.5; }
+    #bldg-panel-upgrade-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    #bldg-panel-cost { color: #a0b888; font-size: 0.68rem; flex: 1; }
+    #bldg-panel-upgrade-btn {
+      background: rgba(200,146,42,0.18); border: 1px solid rgba(200,146,42,0.45);
+      border-radius: 4px; color: #f5d080; cursor: pointer;
+      font-size: 0.68rem; padding: 3px 10px; white-space: nowrap;
+    }
+    #bldg-panel-upgrade-btn:hover { background: rgba(200,146,42,0.32); }
+    #bldg-panel-upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #bldg-panel-req { color: #a06050; font-size: 0.64rem; min-height: 0.9em; }
+
+    /* ── Villager Panel (bottom-left) ── */
+    #villager-panel {
+      position: absolute;
+      bottom: 24px; left: 24px;
+      background: rgba(7,5,10,0.88);
+      border: 1px solid rgba(200,146,42,0.22);
+      border-radius: 5px;
+      padding: 10px 14px 10px;
+      min-width: 200px;
+      display: none;
+      pointer-events: auto;
+    }
+    #villager-panel.visible { display: block; }
+
+    #vp-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 4px;
+    }
+    #vp-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #c8a050;
+      flex-shrink: 0;
+    }
+    #vp-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem; font-weight: 600;
+      color: #c8a050; letter-spacing: 1px;
+    }
+    #vp-role {
+      font-size: 0.62rem; color: #c09060;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    #vp-tier {
+      display: inline-block;
+      font-size: 0.58rem; letter-spacing: 0.5px;
+      color: #c0a060; text-transform: uppercase;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.20);
+      border-radius: 2px;
+      padding: 1px 5px;
+      margin-top: 2px;
+    }
+
+    /* XP bar */
+    #vp-xp-wrap {
+      margin-top: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #vp-xp-outer {
+      flex: 1; height: 3px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #vp-xp-bar {
+      height: 100%;
+      background: linear-gradient(to right, #7a5018, #e8b040);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    #vp-xp-label {
+      font-size: 0.58rem; color: #a08848;
+      letter-spacing: 0px;
+      flex-shrink: 0;
+    }
+
+    /* Status / hunger row */
+    #vp-body { margin-top: 7px; }
+    #vp-state { font-size: 0.66rem; color: #c0a060; }
+    #vp-state b { color: #e0c070; }
+    #vp-hunger { font-size: 0.62rem; color: #b09060; margin-top: 2px; }
+    #vp-hint { font-size: 0.60rem; color: #a08848; margin-top: 7px;
+      letter-spacing: 0px; line-height: 1.6; border-top: 1px solid rgba(200,146,42,0.12); padding-top: 5px; }
+
+    /* Upgrade section */
+    #vp-upgrade { margin-top: 8px; border-top: 1px solid rgba(200,146,42,0.15); padding-top: 7px; }
+    #vp-upgrade-label { font-size: 0.60rem; letter-spacing: 1px; color: #a08848; text-transform: uppercase; margin-bottom: 5px; }
+    .upgrade-btn {
+      padding: 4px 8px; font-size: 0.60rem;
+      background: rgba(200,146,42,0.10); border: 1px solid rgba(200,146,42,0.25);
+      color: #c8a050; cursor: pointer; border-radius: 2px; letter-spacing: 0px;
+      transition: background 0.12s;
+    }
+    .upgrade-btn:hover { background: rgba(200,146,42,0.25); }
+    .upgrade-btn:disabled { opacity: 0.35; cursor: default; }
+    #vp-upgrade-cost { font-size: 0.60rem; color: #a08848; margin-top: 5px; }
+
+    /* Group assignment */
+    #vp-group { margin-top: 8px; border-top: 1px solid rgba(200,146,42,0.15); padding-top: 7px; }
+    #vp-group-label { font-size: 0.60rem; letter-spacing: 1px; color: #a08848; text-transform: uppercase; margin-bottom: 5px; }
+    #vp-group-btns { display: flex; gap: 3px; }
+    .group-btn {
+      width: 22px; height: 22px; font-size: 0.65rem; font-weight: 700;
+      background: rgba(200,146,42,0.08); border: 1px solid rgba(200,146,42,0.22);
+      color: #a08848; cursor: pointer; border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.10s, color 0.10s;
+    }
+    .group-btn:hover { background: rgba(200,146,42,0.22); color: #c8a050; }
+    .group-btn.group-btn-active { background: rgba(255,215,0,0.18); border-color: rgba(255,215,0,0.60); color: #ffd700; }
+
+    /* ── Build FAB (bottom-left) ── */
+    #build-fab-wrap {
+      position: absolute;
+      bottom: 24px; left: 24px;
+      display: flex; flex-direction: column-reverse;
+      align-items: flex-start; gap: 8px;
+      pointer-events: auto;
+    }
+    #build-fab-wrap.hidden { display: none; }
+    #build-fab {
+      width: 40px; height: 40px;
+      background: rgba(7,5,10,0.90);
+      border: 1px solid rgba(200,146,42,0.38);
+      border-radius: 6px; cursor: pointer;
+      color: #c8922a; font-size: 1.1rem;
+      font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    #build-fab:hover { background: rgba(200,146,42,0.14); border-color: rgba(200,146,42,0.60); }
+    #build-fab.open { background: rgba(200,146,42,0.22); border-color: rgba(200,146,42,0.65); }
+    #build-menu { display: none; flex-direction: row; gap: 8px; align-items: flex-start; }
+    #build-menu.open { display: flex; }
+    #build-btns { display: flex; flex-direction: column; gap: 3px; }
+    .build-section { display: flex; flex-direction: column; gap: 3px; }
+    .build-section-label {
+      display: none;
+      font-size: 0.44rem; letter-spacing: 1.8px; text-transform: uppercase;
+      color: #6a5438; padding: 5px 10px 1px;
+      border-top: 1px solid rgba(200,146,42,0.12);
+      margin-top: 2px;
+    }
+    .build-section:first-child .build-section-label { border-top: none; margin-top: 0; }
+    #build-btns.sectioned .build-section-label { display: block; }
+    .build-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px;
+      background: rgba(7,5,10,0.90);
+      border: 1px solid rgba(200,146,42,0.18);
+      border-radius: 4px; cursor: pointer;
+      color: inherit; font-family: inherit;
+      min-width: 150px;
+      transition: background 0.12s, border-color 0.12s;
+      text-align: left;
+    }
+    .build-btn:hover { background: rgba(200,146,42,0.12); border-color: rgba(200,146,42,0.40); }
+    .build-btn.active { background: rgba(200,146,42,0.22); border-color: rgba(200,146,42,0.65); }
+    .build-btn-icon {
+      width: 20px; height: 20px;
+      background: rgba(255,255,255,0.06); border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; color: #c8a050; flex-shrink: 0;
+    }
+    .build-btn-name { font-size: 0.63rem; color: #c09060; flex: 1; }
+    .build-btn-cost { font-size: 0.58rem; color: #a08040; white-space: nowrap; }
+    #build-tooltip {
+      background: rgba(7,5,10,0.92);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 4px; padding: 8px 10px;
+      font-size: 0.62rem; color: #b09060;
+      width: 160px; display: none;
+      line-height: 1.5; pointer-events: none;
+    }
+    #build-tooltip.visible { display: block; }
+
+    /* ── Virtual d-pad (possession mode) ── */
+    #dpad {
+      position: absolute;
+      bottom: 260px; left: 24px;
+      display: grid;
+      grid-template-areas: ". up ." "left . right" ". down .";
+      grid-template-columns: 48px 48px 48px;
+      grid-template-rows: 48px 48px 48px;
+      gap: 4px;
+      pointer-events: auto;
+    }
+    #dpad.hidden { display: none; }
+    #dp-up    { grid-area: up; }
+    #dp-left  { grid-area: left; }
+    #dp-right { grid-area: right; }
+    #dp-down  { grid-area: down; }
+    .dp-btn {
+      background: rgba(200,146,42,0.12);
+      border: 1px solid rgba(200,146,42,0.30);
+      border-radius: 4px;
+      color: #c8a050;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      user-select: none;
+      transition: background 0.08s;
+    }
+    .dp-btn:active { background: rgba(200,146,42,0.35); }
+
+    /* ── Minimap ── */
+    #mm-wrap {
+      position: absolute;
+      bottom: 24px; right: 24px;
+      pointer-events: auto;
+    }
+    #mm-label {
+      font-size: 0.60rem; letter-spacing: 1px;
+      color: #a08848; text-align: center;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    #minimap {
+      display: block; cursor: pointer;
+      border-radius: 2px;
+      box-shadow:
+        0 0 0 1px rgba(200,146,42,0.28),
+        0 0 0 3px rgba(7,5,10,0.6),
+        0 4px 24px rgba(0,0,0,0.7);
+    }
+
+    /* ── Name Entry screen ── */
+    @keyframes title-breathe {
+      0%,100% { text-shadow: 0 0 60px rgba(200,146,42,0.50), 0 0 20px rgba(200,146,42,0.30), 0 2px 8px rgba(0,0,0,0.9); }
+      50%      { text-shadow: 0 0 90px rgba(200,146,42,0.80), 0 0 40px rgba(200,146,42,0.50), 0 0 120px rgba(200,146,42,0.20), 0 2px 8px rgba(0,0,0,0.9); }
+    }
+    @keyframes btn-pulse {
+      0%,100% { box-shadow: 0 0 18px rgba(200,146,42,0.20), inset 0 1px 0 rgba(255,220,120,0.08); }
+      50%      { box-shadow: 0 0 36px rgba(200,146,42,0.45), inset 0 1px 0 rgba(255,220,120,0.12); }
+    }
+    @keyframes card-in {
+      from { opacity:0; transform: translateY(18px) scale(0.97); }
+      to   { opacity:1; transform: translateY(0)    scale(1);    }
+    }
+    @keyframes orb-drift {
+      0%   { transform: translate(0,0)    scale(1); }
+      33%  { transform: translate(18px,-12px) scale(1.06); }
+      66%  { transform: translate(-12px,8px)  scale(0.96); }
+      100% { transform: translate(0,0)    scale(1); }
+    }
+    #name-screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, rgba(40,24,8,0.55) 0%, rgba(7,5,10,0.72) 55%, rgba(4,3,7,0.95) 100%);
+      z-index: 600;
+      overflow: hidden;
+    }
+    #name-screen.hidden { display: none; }
+    /* Ambient orbs */
+    #name-screen::before, #name-screen::after {
+      content: '';
+      position: absolute; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; animation: orb-drift 12s ease-in-out infinite;
+    }
+    #name-screen::before {
+      width: 520px; height: 320px;
+      top: 5%; left: 12%;
+      background: radial-gradient(ellipse, rgba(180,100,20,0.14) 0%, transparent 70%);
+    }
+    #name-screen::after {
+      width: 400px; height: 260px;
+      bottom: 8%; right: 8%;
+      background: radial-gradient(ellipse, rgba(120,60,180,0.08) 0%, transparent 70%);
+      animation-delay: -6s;
+    }
+    #name-card {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+      background: linear-gradient(170deg, rgba(22,14,6,0.97) 0%, rgba(12,8,3,0.99) 100%);
+      border: 1px solid rgba(200,146,42,0.30);
+      border-radius: 10px; padding: 48px 56px 40px;
+      box-shadow:
+        0 0 0 1px rgba(200,146,42,0.07),
+        0 0 80px rgba(200,146,42,0.07),
+        inset 0 0 80px rgba(0,0,0,0.4),
+        0 32px 96px rgba(0,0,0,0.85);
+      animation: card-in 0.55s cubic-bezier(0.22,1,0.36,1) both;
+      min-width: 360px;
+    }
+    .ns-emblem {
+      font-size: 2rem; margin-bottom: 16px; opacity: 0.75;
+      filter: drop-shadow(0 0 12px rgba(200,146,42,0.5));
+    }
+    #name-card .ns-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 700;
+      color: #d4a040; letter-spacing: 16px;
+      animation: title-breathe 4s ease-in-out infinite;
+      margin-bottom: 6px;
+    }
+    #name-card .ns-sub {
+      font-size: 0.60rem; letter-spacing: 6px; color: #6a4c18;
+      text-transform: uppercase; margin-bottom: 20px;
+    }
+    .ns-divider {
+      display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 20px;
+      color: rgba(200,146,42,0.28); font-size: 0.55rem; letter-spacing: 2px;
+    }
+    .ns-divider::before, .ns-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to var(--dir, right), transparent, rgba(200,146,42,0.28));
+    }
+    .ns-divider::before { --dir: right; }
+    .ns-divider::after  { --dir: left;  }
+    .ns-features {
+      display: flex; gap: 20px; margin-bottom: 28px;
+      font-size: 0.58rem; letter-spacing: 2px; color: #7a5c28;
+      text-transform: uppercase;
+    }
+    .ns-features span { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .ns-features span img { image-rendering: pixelated; opacity: 0.85; filter: drop-shadow(0 0 6px rgba(200,146,42,0.5)); }
+    .ns-features span b { color: #a07838; font-size: 0.65rem; }
+    #name-input {
+      font-family: 'Silkscreen', monospace; font-size: 0.95rem; color: #eedda0;
+      background: rgba(200,146,42,0.05); border: 1px solid rgba(200,146,42,0.30);
+      border-radius: 5px; padding: 12px 22px; text-align: center;
+      outline: none; width: 100%; letter-spacing: 3px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 12px;
+    }
+    #name-input::placeholder { color: #4a3410; }
+    #name-input:focus { border-color: rgba(200,146,42,0.65); box-shadow: 0 0 18px rgba(200,146,42,0.14), inset 0 0 8px rgba(200,146,42,0.04); }
+    #name-btn {
+      font-family: 'Silkscreen', monospace; font-size: 0.80rem; letter-spacing: 3px;
+      color: #e8c070;
+      background: linear-gradient(160deg, rgba(200,146,42,0.18) 0%, rgba(160,100,20,0.22) 100%);
+      border: 1px solid rgba(200,146,42,0.50); border-radius: 5px;
+      padding: 13px 40px; cursor: pointer; text-transform: uppercase; width: 100%;
+      animation: btn-pulse 3.5s ease-in-out infinite;
+      transition: background 0.2s, color 0.2s;
+    }
+    #name-btn:hover {
+      background: linear-gradient(160deg, rgba(200,146,42,0.30) 0%, rgba(160,100,20,0.36) 100%);
+      color: #ffd880;
+    }
+
+    /* ── Account panel (inside modal) ── */
+    .acc-label {
+      font-size: 0.52rem; letter-spacing: 4px; color: #5a3e14;
+      text-transform: uppercase; text-align: center; margin-bottom: 10px;
+    }
+    .acc-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .acc-name { font-weight: 700; color: #f0c860; flex: 1; }
+    .acc-balance { color: #c8a860; font-size: 0.65rem; }
+    .acc-logout { background: none; border: none; color: #604830; cursor: pointer; font-size: 0.58rem; padding: 0; font-family: inherit; letter-spacing: 1px; }
+    .acc-logout:hover { color: #c06030; }
+    .acc-slots { color: #6878a0; margin-bottom: 10px; font-size: 0.62rem; }
+    .acc-slots b { color: #90a8c0; }
+    .acc-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .acc-buy-btn {
+      font-family: 'Silkscreen', monospace; font-size: 0.58rem; letter-spacing: 1px;
+      color: #c8922a; background: rgba(200,146,42,0.08);
+      border: 1px solid rgba(200,146,42,0.28); border-radius: 4px;
+      padding: 6px 10px; cursor: pointer; flex: 1;
+      transition: background 0.15s;
+    }
+    .acc-buy-btn:hover:not(:disabled) { background: rgba(200,146,42,0.18); }
+    .acc-buy-btn:disabled { opacity: 0.30; cursor: not-allowed; }
+    .acc-form { display: flex; flex-direction: column; gap: 8px; }
+    .acc-input {
+      font-family: 'Silkscreen', monospace; font-size: 0.68rem; color: #e8d5a0;
+      background: rgba(200,146,42,0.04); border: 1px solid rgba(200,146,42,0.22);
+      border-radius: 4px; padding: 8px 12px; outline: none; letter-spacing: 1px;
+      transition: border-color 0.2s;
+    }
+    .acc-input:focus { border-color: rgba(200,146,42,0.50); }
+    .acc-form-btns { display: flex; gap: 8px; }
+    .acc-form-btns .acc-buy-btn:first-child {
+      background: rgba(200,146,42,0.14); border-color: rgba(200,146,42,0.45);
+      color: #e0b050;
+    }
+    .acc-form-btns .acc-buy-btn:first-child:hover { background: rgba(200,146,42,0.24); }
+    .acc-status { min-height: 1.2em; font-size: 0.60rem; margin-top: 6px; text-align: center; letter-spacing: 1px; }
+
+    /* ── Reconnect overlay ── */
+    #reconnect-overlay {
+      position: absolute;
+      top: 80px; left: 50%; transform: translateX(-50%);
+      background: rgba(7,5,10,0.92);
+      border: 1px solid rgba(200,80,40,0.55);
+      border-radius: 4px; padding: 7px 20px;
+      pointer-events: none; z-index: 150;
+    }
+    #reconnect-overlay.hidden { display: none; }
+    #reconnect-text { font-size: 0.65rem; color: #e07040; letter-spacing: 1px; }
+
+    /* ── Game Over / Victory overlay ── */
+    @keyframes go-card-in {
+      from { opacity:0; transform: translateY(32px) scale(0.94); }
+      to   { opacity:1; transform: translateY(0)    scale(1);    }
+    }
+    @keyframes go-flare {
+      0%,100% { opacity: 0.55; transform: scale(1); }
+      50%     { opacity: 0.80; transform: scale(1.08); }
+    }
+    @keyframes go-divider-grow {
+      from { width: 0; }
+      to   { width: 100%; }
+    }
+    #gameover {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; overflow: hidden;
+    }
+    #gameover.go-hidden { display: none; }
+    /* Tinted backdrop — colour set by JS per outcome */
+    #go-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.78);
+      transition: background 0.6s ease;
+    }
+    /* Ambient glow orb behind card */
+    #go-orb {
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      filter: blur(100px);
+      animation: go-flare 4s ease-in-out infinite;
+      pointer-events: none;
+      transition: background 0.6s ease;
+    }
+    #go-card {
+      position: relative;
+      background: linear-gradient(170deg, rgba(16,10,4,0.98) 0%, rgba(8,5,2,0.99) 100%);
+      border-radius: 10px;
+      padding: 44px 52px 36px;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+      min-width: 380px;
+      animation: go-card-in 0.5s cubic-bezier(0.22,1,0.36,1) both;
+      transition: border-color 0.6s ease, box-shadow 0.6s ease;
+    }
+    #go-icon { margin-bottom: 14px; }
+    #go-title {
+      font-family: 'Cinzel', serif; font-size: clamp(1.6rem,4vw,2.2rem); font-weight: 700;
+      letter-spacing: 8px; margin-bottom: 8px;
+      transition: color 0.6s ease, text-shadow 0.6s ease;
+    }
+    #go-sub {
+      font-size: 0.62rem; color: #706050; letter-spacing: 3px;
+      text-transform: uppercase; margin-bottom: 20px;
+    }
+    .go-divider {
+      height: 1px; width: 100%; margin-bottom: 20px;
+      animation: go-divider-grow 0.6s 0.3s ease both;
+      transition: background 0.6s ease;
+    }
+    /* Stats grid */
+    #go-stats {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 10px; width: 100%; margin-bottom: 20px;
+    }
+    .go-stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 5px; padding: 10px 8px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .go-stat-val {
+      font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 700;
+      transition: color 0.6s ease;
+    }
+    .go-stat-label {
+      font-size: 0.50rem; letter-spacing: 2px; text-transform: uppercase; color: #504038;
+    }
+    #go-reward {
+      font-size: 0.68rem; color: #70b860; letter-spacing: 2px;
+      min-height: 1.2em; margin-bottom: 16px;
+    }
+    #go-btn {
+      padding: 13px 44px;
+      font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 4px;
+      cursor: pointer; text-transform: uppercase;
+      border-radius: 5px; width: 100%;
+      transition: background 0.2s, color 0.2s, border-color 0.6s, box-shadow 0.2s;
+    }
+    #go-btn:hover { box-shadow: 0 0 24px rgba(200,146,42,0.25); }
+
+    /* ── NPC Modal ── */
+    #npc-modal {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: auto;
+      z-index: 50;
+    }
+    #npc-modal.npc-hidden { display: none; }
+
+    #npc-modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.45);
+      cursor: default;
+    }
+    #npc-modal-card {
+      position: relative; z-index: 1;
+      background: rgba(10,7,14,0.96);
+      border: 1px solid rgba(200,146,42,0.35);
+      border-radius: 6px;
+      padding: 18px 22px;
+      min-width: 300px; max-width: 400px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(200,146,42,0.10);
+    }
+    #npc-modal-header {
+      display: flex; align-items: flex-start; gap: 12px;
+      margin-bottom: 12px; padding-bottom: 10px;
+      border-bottom: 1px solid rgba(200,146,42,0.12);
+    }
+    #npc-modal-avatar {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    #npc-modal-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.92rem; font-weight: 600;
+      color: #c8a050; letter-spacing: 1.5px;
+    }
+    #npc-modal-sub {
+      font-size: 0.60rem; color: #a08848;
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    #npc-modal-body {
+      font-size: 0.70rem; color: #c0a060;
+      line-height: 1.6; margin-bottom: 14px;
+    }
+    #npc-modal-actions {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .npc-trade-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 6px 12px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.28);
+      border-radius: 3px; cursor: pointer;
+      color: inherit; font-family: inherit;
+      transition: background 0.12s;
+    }
+    .npc-trade-btn:hover { background: rgba(200,146,42,0.22); }
+    .npc-t-give  { font-size:0.76rem; color:#c8a050; }
+    .npc-t-want  { font-size:0.76rem; color:#80c870; }
+    .npc-t-arrow { color:#a08848; font-size:0.70rem; }
+    .npc-action-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 12px;
+      background: rgba(200,146,42,0.10);
+      border: 1px solid rgba(200,146,42,0.28);
+      border-radius: 3px; cursor: pointer;
+      color: inherit; font-family: inherit;
+      font-size:0.68rem; color:#c8a050; letter-spacing:0px;
+      transition: background 0.12s;
+    }
+    .npc-action-btn:hover { background: rgba(200,146,42,0.22); }
+    .npc-cost { font-size:0.62rem; color:#a08848; }
+    .npc-btn-dim { opacity: 0.35; cursor: default; }
+    .npc-decline-btn {
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 3px; cursor: pointer;
+      font-size:0.62rem;
+      color: #a08848; letter-spacing: 0.5px; text-transform: uppercase;
+      transition: background 0.12s;
+      align-self: flex-end;
+    }
+    .npc-decline-btn:hover { background: rgba(255,255,255,0.08); }
+
+    /* ── Toast notifications ── */
+    #possess-bar {
+      position: absolute;
+      top: 44px; left: 50%; transform: translateX(-50%);
+      background: rgba(7,5,10,0.90);
+      border: 1px solid rgba(200,60,60,0.45);
+      border-radius: 4px;
+      padding: 5px 16px;
+      display: flex; align-items: center; gap: 12px;
+      pointer-events: auto;
+      box-shadow: 0 0 18px rgba(200,40,40,0.25);
+    }
+    #possess-bar.hidden { display: none; }
+    #possess-bar-label { font-size: 0.62rem; color: #e06060; letter-spacing: 1px; }
+    #possess-name { font-size: 0.62rem; color: #e8a0a0; }
+    #possess-release {
+      padding: 3px 10px; font-size: 0.60rem; font-family: inherit;
+      background: rgba(200,60,60,0.18); border: 1px solid rgba(200,60,60,0.40);
+      border-radius: 3px; color: #e06060; cursor: pointer;
+    }
+    #possess-release:hover { background: rgba(200,60,60,0.32); }
+
+    #toast-stack {
+      position: absolute;
+      top: 56px; right: 24px;
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .toast {
+      font-size: 0.65rem; letter-spacing: 0px;
+      color: #c8a050;
+      background: rgba(7,5,10,0.88);
+      border: 1px solid rgba(200,146,42,0.25);
+      border-radius: 3px;
+      padding: 5px 12px;
+      opacity: 0;
+      transform: translateX(12px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+    .toast.toast-show { opacity: 1; transform: translateX(0); }
+    .toast.toast-warn    { color: #e07030; border-color: rgba(224,112,48,0.35); }
+    .toast.toast-success { color: #70d090; border-color: rgba(80,200,100,0.35); }
+
+    /* ── Quest panel ── */
+    #quest-panel {
+      position: absolute;
+      bottom: 226px; right: 24px;
+      width: 188px;
+      pointer-events: none;
+    }
+    #quest-header {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.50rem; letter-spacing: 1.5px; text-transform: uppercase;
+      color: #a08848; margin-bottom: 5px;
+      pointer-events: auto; cursor: pointer; user-select: none;
+    }
+    #quest-badge {
+      background: rgba(200,170,80,0.15);
+      border: 1px solid rgba(200,170,80,0.30);
+      color: #c8a830; font-size: 0.46rem;
+      padding: 1px 5px; border-radius: 2px;
+    }
+    .quest-item {
+      background: rgba(8,6,2,0.86);
+      border: 1px solid rgba(200,170,80,0.20);
+      border-radius: 3px; padding: 5px 8px;
+      margin-bottom: 4px;
+      pointer-events: auto;
+    }
+    .quest-title { color: #e0c870; font-size: 0.56rem; font-weight: 700; letter-spacing: 0.3px; }
+    .quest-desc { color: #806f54; font-size: 0.50rem; margin: 2px 0 4px; line-height: 1.4; }
+    .quest-prog-text { color: #a09060; }
+    .quest-prog-outer { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+    .quest-prog-inner { height: 3px; background: #c8a030; border-radius: 2px; transition: width 0.5s ease; }
+    .quest-reward-row { font-size: 0.50rem; color: #70a870; margin-top: 4px; }
+    .quest-done { border-color: rgba(80,200,100,0.45); animation: q-flash 0.7s ease; }
+    .quest-done .quest-title { color: #70d070; }
+    .quest-done .quest-prog-inner { background: #50c050; width: 100% !important; }
+    @keyframes q-flash {
+      0%   { background: rgba(60,180,60,0.22); }
+      100% { background: rgba(8,6,2,0.86); }
+    }
+
+    /* ── Tutorial panel ── */
+    #tut-panel {
+      position: fixed;
+      background: rgba(7,5,10,0.96);
+      border: 1px solid rgba(200,146,42,0.45);
+      border-radius: 6px;
+      padding: 10px 14px 10px;
+      width: min(280px, 88vw);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.35s ease, left 0.4s ease, top 0.4s ease;
+      box-shadow: 0 0 24px rgba(200,146,42,0.12);
+      z-index: 10;
+    }
+    #tut-panel.tut-visible { opacity: 1; pointer-events: auto; }
+    #tut-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    #tut-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem; color: #c8922a; letter-spacing: 1px;
+    }
+    #tut-progress { font-size: 0.50rem; color: #60503a; }
+    #tut-body {
+      font-size: 0.54rem; color: #c8b880;
+      line-height: 1.7; margin-bottom: 10px;
+      white-space: pre-line;
+    }
+    #tut-footer { display: flex; justify-content: space-between; align-items: center; }
+    #tut-skip {
+      background: none; border: none; color: #504030;
+      font-family: inherit; font-size: 0.50rem; cursor: pointer;
+      text-decoration: underline; padding: 0;
+    }
+    #tut-skip:hover { color: #807060; }
+    #tut-btn {
+      padding: 4px 11px;
+      background: rgba(200,146,42,0.15);
+      border: 1px solid rgba(200,146,42,0.45);
+      border-radius: 4px; color: #c8922a;
+      font-family: inherit; font-size: 0.56rem;
+      cursor: pointer; transition: background 0.12s;
+    }
+    #tut-btn:hover { background: rgba(200,146,42,0.28); }
+
+    @keyframes tut-pulse {
+      0%,100% { box-shadow: 0 0 0 2px rgba(200,146,42,0.85), 0 0 14px rgba(200,146,42,0.4); }
+      50%      { box-shadow: 0 0 0 4px rgba(200,146,42,0.45), 0 0 28px rgba(200,146,42,0.65); }
+    }
+    .tut-highlight { animation: tut-pulse 1.4s ease-in-out infinite; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div id="loading-title">EMPIRES</div>
+  <div id="loading-sub">Forging the realm…</div>
+  <div id="loading-bar-wrap"><div id="loading-bar-fill"></div></div>
+</div>
+
+<!-- Game canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD overlay -->
+<div id="hud">
+
+  <div id="topbar">
+    <div id="game-title">EMPIRES</div>
+
+    <!-- Grouped resource bar -->
+    <div id="res-bar">
+      <!-- Economy -->
+      <div class="res-group">
+        <div class="res-chip"><span class="res-chip-icon" data-icon="gold" data-icon-size="14"></span><span class="res-chip-val" id="res-gold">100</span></div>
+        <div class="res-chip"><span class="res-chip-icon" data-icon="wood" data-icon-size="14"></span><span class="res-chip-val" id="res-wood">0</span></div>
+      </div>
+      <!-- Food chain -->
+      <div class="res-group" id="food-chip">
+        <div class="res-chip"><span class="res-chip-icon" data-icon="crops" data-icon-size="14"></span><span class="res-chip-val" id="res-crops">0</span></div>
+        <div class="res-chip"><span class="res-chip-icon" data-icon="food" data-icon-size="14"></span><span class="res-chip-val" id="res-food">20</span></div>
+      </div>
+      <!-- Materials -->
+      <div class="res-group">
+        <div class="res-chip"><span class="res-chip-icon" data-icon="stone" data-icon-size="14"></span><span class="res-chip-val" id="res-stone">0</span></div>
+        <div class="res-chip"><span class="res-chip-icon" data-icon="iron" data-icon-size="14"></span><span class="res-chip-val" id="res-iron">0</span></div>
+      </div>
+    </div>
+
+    <div id="topbar-right">
+      <div id="hunger-wrap">
+        <span id="hunger-label">Hunger</span>
+        <div id="hunger-bar-outer"><div id="hunger-bar-inner"></div></div>
+      </div>
+      <div class="hud-pill" id="pop-display">0/20</div>
+      <div class="hud-pill" id="day-display">Day 1</div>
+      <div class="hud-pill" id="time-display">Morning</div>
+      <div class="hud-pill" style="color:#6a9060;border-color:rgba(80,160,50,0.28)">Singleplayer</div>
+      <button id="topbar-account-btn" onclick="openAccountModal()">Account</button>
+    </div>
+  </div>
+
+  <div id="hint">Roam freely &nbsp;·&nbsp; Find a good spot &nbsp;·&nbsp; <b>Settle</b> to found your kingdom</div>
+
+  <button id="settle-btn">Settle Here</button>
+
+  <!-- Building panel (bottom-left, shown when clicking a building) -->
+  <div id="bldg-panel">
+    <div id="bldg-panel-header">
+      <span id="bldg-panel-name">—</span>
+      <span id="bldg-panel-tier-badge"></span>
+      <button id="bldg-panel-close" onclick="closeBuildingPanel()">✕</button>
+    </div>
+    <div id="bldg-panel-effect"></div>
+    <div id="bldg-panel-upgrade-row">
+      <span id="bldg-panel-cost"></span>
+      <button id="bldg-panel-upgrade-btn" onclick="requestBuildingUpgrade()"></button>
+    </div>
+    <div id="bldg-panel-req"></div>
+  </div>
+
+  <!-- Villager panel (bottom-left) -->
+  <div id="villager-panel">
+    <div id="vp-header">
+      <div id="vp-dot"></div>
+      <div id="vp-name">—</div>
+    </div>
+    <div id="vp-role">—</div>
+    <div id="vp-tier">Tier I</div>
+    <div id="vp-xp-wrap">
+      <div id="vp-xp-outer"><div id="vp-xp-bar"></div></div>
+      <span id="vp-xp-label">0 / 10 xp</span>
+    </div>
+    <div id="vp-body">
+      <div id="vp-state">Status: <b id="vp-status">—</b></div>
+      <div id="vp-hunger">Hunger: <b id="vp-hunger-val">—</b></div>
+    </div>
+    <div id="vp-hint">Click tile to move · Esc deselect · F follow</div>
+    <div id="vp-upgrade" style="display:none;">
+      <div id="vp-upgrade-label">Train as</div>
+      <div id="vp-upgrade-btns" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      <div id="vp-upgrade-cost">Cost: <span data-icon="gold" data-icon-size="12"></span> 20 gold</div>
+    </div>
+    <div id="vp-explorer-note" style="display:none;margin-top:8px;border-top:1px solid rgba(40,180,160,0.25);padding-top:7px;font-size:0.60rem;color:#28b4a0;line-height:1.5;">
+      <span data-icon="compass" data-icon-size="12"></span> Explorer · Click anywhere to send<br>Reveals a wide area of fog
+    </div>
+    <div id="vp-group" style="display:none;">
+      <div id="vp-group-label">Assign to group</div>
+      <div id="vp-group-btns"></div>
+    </div>
+    <div id="vp-possess" style="display:none;margin-top:8px;border-top:1px solid rgba(200,146,42,0.15);padding-top:7px;">
+      <button id="possess-btn" style="width:100%;padding:5px 8px;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.40);border-radius:3px;color:#e06060;cursor:pointer;font-size:0.65rem;font-family:inherit;transition:background 0.12s;" onmouseover="this.style.background='rgba(200,60,60,0.28)'" onmouseout="this.style.background='rgba(200,60,60,0.15)'"><span data-icon="sword" data-icon-size="11"></span> Possess</button>
+    </div>
+  </div>
+
+  <!-- Build FAB + menu (bottom-left, hidden until settled) -->
+  <div id="build-fab-wrap" class="hidden">
+    <div id="build-menu">
+      <div id="build-btns"></div>
+      <div id="build-tooltip"></div>
+    </div>
+    <button id="build-fab" onclick="toggleBuildPanel()"><span data-icon="hammer" data-icon-size="22"></span></button>
+  </div>
+
+  <!-- Virtual d-pad (shown during knight possession) -->
+  <div id="dpad" class="hidden">
+    <button class="dp-btn" id="dp-up">▲</button>
+    <button class="dp-btn" id="dp-left">◀</button>
+    <button class="dp-btn" id="dp-right">▶</button>
+    <button class="dp-btn" id="dp-down">▼</button>
+  </div>
+
+  <!-- Minimap (bottom-right) -->
+  <div id="mm-wrap">
+    <div id="mm-label">World Map</div>
+    <canvas id="minimap" width="168" height="168"></canvas>
+  </div>
+
+  <!-- Quest panel (bottom-right, above minimap) -->
+  <div id="quest-panel">
+    <div id="quest-header">
+      <span>Quests</span>
+      <span id="quest-badge">0/12</span>
+      <span id="quest-arrow">▲</span>
+    </div>
+    <div id="quest-items"></div>
+  </div>
+
+  <!-- NPC Visitor Modal -->
+  <div id="npc-modal" class="npc-hidden">
+    <div id="npc-modal-backdrop" onclick="closeNPCModal(false)"></div>
+    <div id="npc-modal-card">
+      <div id="npc-modal-header">
+        <div id="npc-modal-avatar" data-icon="person" data-icon-size="28"></div>
+        <div>
+          <div id="npc-modal-name">—</div>
+          <div id="npc-modal-sub">—</div>
+        </div>
+      </div>
+      <div id="npc-modal-body"></div>
+      <div id="npc-modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="possess-bar" class="hidden">
+    <span id="possess-bar-label"><span data-icon="sword" data-icon-size="12"></span> POSSESSING</span>
+    <span id="possess-name">—</span>
+    <button id="possess-release" onclick="releasePossession()">ESC Release</button>
+  </div>
+
+  <!-- Tutorial panel (new players only) -->
+  <div id="tut-panel">
+    <div id="tut-header">
+      <span id="tut-title">—</span>
+      <span id="tut-progress">1 / 4</span>
+    </div>
+    <p id="tut-body">—</p>
+    <div id="tut-footer">
+      <button id="tut-skip" onclick="tutorialSkip()">Skip tutorial</button>
+      <button id="tut-btn" onclick="tutorialAdvance()">Got it →</button>
+    </div>
+  </div>
+
+  <div id="toast-stack"></div>
+
+  <!-- Reconnect overlay -->
+  <div id="reconnect-overlay" class="hidden">
+    <span id="reconnect-text">Reconnecting…</span>
+  </div>
+
+</div>
+
+<!-- Name entry screen -->
+<div id="name-screen">
+  <div id="name-card">
+    <div class="ns-emblem">⚔</div>
+    <div class="ns-title">EMPIRES</div>
+    <div class="ns-sub">Phase I — The Realm</div>
+    <div class="ns-divider">◆</div>
+    <div class="ns-features">
+      <span><span data-icon="hammer" data-icon-size="18"></span><b>Build</b>towns &amp; farms</span>
+      <span><span data-icon="sword" data-icon-size="18"></span><b>Train</b>knights &amp; archers</span>
+      <span><span data-icon="skull" data-icon-size="18"></span><b>Conquer</b>enemy realms</span>
+    </div>
+    <input id="name-input" type="text" maxlength="18" placeholder="Your ruler's name" autocomplete="off" spellcheck="false">
+    <button id="name-btn">Enter the Realm</button>
+    <button id="name-account-btn" onclick="openAccountModal()" style="margin-top:10px;width:100%;background:none;border:none;color:#5a3e14;font-family:inherit;font-size:0.58rem;letter-spacing:2px;cursor:pointer;text-transform:uppercase;padding:6px 0;transition:color 0.15s;" onmouseover="this.style.color='#c8922a'" onmouseout="this.style.color='#5a3e14'">Account / Sign In</button>
+  </div>
+</div>
+
+
+<div id="account-modal" class="hidden" onclick="if(event.target===this)closeAccountModal()">
+  <div id="account-modal-card">
+    <button id="account-modal-close" onclick="closeAccountModal()">✕ Close</button>
+    <div id="account-modal-title">ACCOUNT</div>
+    <div id="account-panel"></div>
+  </div>
+</div>
+
+<!-- Chat -->
+<div id="chat-wrap">
+  <div id="chat-log"></div>
+  <div id="chat-input-row">
+    <input id="chat-input" maxlength="120" placeholder="Say something…" autocomplete="off">
+    <span id="chat-hint">Enter · Esc</span>
+  </div>
+</div>
+
+<!-- Game Over / Victory screen (outside HUD, full-screen) -->
+<div id="gameover" class="go-hidden">
+  <div id="go-backdrop"></div>
+  <div id="go-orb"></div>
+  <div id="go-card">
+    <div id="go-icon" data-icon="gold" data-icon-size="52"></div>
+    <div id="go-title">—</div>
+    <div id="go-sub">—</div>
+    <div class="go-divider" id="go-divider"></div>
+    <div id="go-stats">
+      <div class="go-stat">
+        <span class="go-stat-val" id="go-stat-days">—</span>
+        <span class="go-stat-label">Days</span>
+      </div>
+      <div class="go-stat">
+        <span class="go-stat-val" id="go-stat-pop">—</span>
+        <span class="go-stat-label">Population</span>
+      </div>
+      <div class="go-stat">
+        <span class="go-stat-val" id="go-stat-bldg">—</span>
+        <span class="go-stat-label">Buildings</span>
+      </div>
+    </div>
+    <div id="go-reward"></div>
+    <button id="go-btn">Play Again</button>
+  </div>
+</div>
+
+<script src="js/icons.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/world.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/villager-targets.js"></script>
+<script src="js/villager-ai.js"></script>
+<script src="js/renderer-world.js"></script>
+<script src="js/renderer-units.js"></script>
+<script src="js/npcs.js"></script>
+<script src="js/combat.js"></script>
+<script src="singleplayer/sp-net.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
